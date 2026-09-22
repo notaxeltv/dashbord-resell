@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { NewPurchaseDialog } from "@/components/purchases/new-purchase-dialog";
 import { DeletePurchaseButton } from "@/components/purchases/delete-purchase-button";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import type { Purchase, Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -42,8 +43,8 @@ export default async function PurchasesPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Acquisti</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-foreground">Acquisti</h1>
+          <p className="text-sm text-muted-foreground">
             Storico degli acquisti effettuati dal team.
           </p>
         </div>
@@ -57,26 +58,12 @@ export default async function PurchasesPage() {
       )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Numero acquisti
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{list.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Totale spesa (con spedizioni)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">€{totalSpent.toFixed(2)}</p>
-          </CardContent>
-        </Card>
+        <KpiCard label="Numero acquisti" value={list.length} accent="violet" />
+        <KpiCard
+          label="Totale spesa (con spedizioni)"
+          value={`€${totalSpent.toFixed(2)}`}
+          accent="gold"
+        />
       </div>
 
       <Card>
@@ -102,7 +89,7 @@ export default async function PurchasesPage() {
                   <TableRow>
                     <TableCell
                       colSpan={7}
-                      className="py-8 text-center text-slate-500"
+                      className="py-8 text-center text-muted-foreground"
                     >
                       Nessun acquisto registrato.
                     </TableCell>

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { NewSaleDialog, type CardOption } from "@/components/sales/new-sale-dialog";
 import { DeleteSaleButton } from "@/components/sales/delete-sale-button";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import type { Sale, Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -50,8 +51,8 @@ export default async function SalesPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Vendite</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-foreground">Vendite</h1>
+          <p className="text-sm text-muted-foreground">
             Storico delle vendite effettuate dal team.
           </p>
         </div>
@@ -65,26 +66,12 @@ export default async function SalesPage() {
       )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Numero vendite
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{list.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Incasso netto totale
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">€{totalRevenue.toFixed(2)}</p>
-          </CardContent>
-        </Card>
+        <KpiCard label="Numero vendite" value={list.length} accent="magenta" />
+        <KpiCard
+          label="Incasso netto totale"
+          value={`€${totalRevenue.toFixed(2)}`}
+          accent="emerald"
+        />
       </div>
 
       <Card>
@@ -111,7 +98,7 @@ export default async function SalesPage() {
                   <TableRow>
                     <TableCell
                       colSpan={8}
-                      className="py-8 text-center text-slate-500"
+                      className="py-8 text-center text-muted-foreground"
                     >
                       Nessuna vendita registrata.
                     </TableCell>

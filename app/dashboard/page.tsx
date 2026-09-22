@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DeleteCardButton } from "@/components/cards/delete-card-button";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { CARD_STATUS_BADGE_VARIANT, CARD_STATUS_LABELS } from "@/lib/constants";
 import type { Card as CardRow } from "@/lib/types";
 
@@ -44,8 +45,8 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
             Panoramica dell&apos;inventario carte Pokémon.
           </p>
         </div>
@@ -61,46 +62,10 @@ export default async function DashboardPage() {
       )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Totale carte
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totals.total}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">
-              In stock
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totals.in_stock}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">
-              In vendita
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totals.listed}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">
-              Vendute
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totals.sold}</p>
-          </CardContent>
-        </Card>
+        <KpiCard label="Totale carte" value={totals.total} accent="magenta" />
+        <KpiCard label="In stock" value={totals.in_stock} accent="violet" />
+        <KpiCard label="In vendita" value={totals.listed} accent="gold" />
+        <KpiCard label="Vendute" value={totals.sold} accent="emerald" />
       </div>
 
       <Card>
@@ -127,7 +92,7 @@ export default async function DashboardPage() {
                   <TableRow>
                     <TableCell
                       colSpan={8}
-                      className="py-8 text-center text-slate-500"
+                      className="py-8 text-center text-muted-foreground"
                     >
                       Nessuna carta inserita. Aggiungi la prima carta con
                       &quot;+ Nuova carta&quot;.

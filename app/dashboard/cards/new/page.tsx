@@ -94,8 +94,8 @@ export default function NewCardPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Nuova carta</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-bold text-foreground">Nuova carta</h1>
+        <p className="text-sm text-muted-foreground">
           Inserisci i dettagli della carta acquistata.
         </p>
       </div>

@@ -43,10 +43,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <Card className="w-full max-w-sm">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#100815] px-4">
+      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-fuchsia-600/30 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-amber-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-1/3 h-72 w-72 -translate-x-1/2 rounded-full bg-violet-700/20 blur-3xl" />
+
+      <Card className="relative w-full max-w-sm overflow-hidden border-white/10 shadow-2xl">
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-fuchsia-500 via-amber-400 to-fuchsia-500" />
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-2 text-3xl">🃏</div>
+          <div className="mx-auto mb-2 text-3xl drop-shadow-[0_0_10px_rgba(217,70,239,0.6)]">
+            🃏
+          </div>
           <CardTitle className="text-xl">Pokémon Card Manager</CardTitle>
           <CardDescription>
             Accedi con le credenziali fornite dal team.

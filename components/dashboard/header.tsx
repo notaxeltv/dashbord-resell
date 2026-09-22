@@ -24,20 +24,30 @@ export function DashboardHeader({ email }: { email: string }) {
   }
 
   return (
-    <header className="border-b bg-white">
+    <header className="relative border-b border-fuchsia-900/40 bg-gradient-to-r from-[#170821] via-[#2b0f3f] to-[#100815] text-white shadow-lg">
+      <div className="absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-amber-400 via-fuchsia-500 to-amber-400" />
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 text-lg font-semibold text-slate-900"
+          className="flex items-center gap-2 text-lg font-semibold"
         >
-          <span aria-hidden>🃏</span>
-          Pokémon Card Manager
+          <span aria-hidden className="drop-shadow-[0_0_6px_rgba(217,70,239,0.8)]">
+            🃏
+          </span>
+          <span className="bg-gradient-to-r from-fuchsia-300 via-white to-amber-300 bg-clip-text text-transparent">
+            Pokémon Card Manager
+          </span>
         </Link>
         <div className="flex items-center gap-4">
-          <span className="hidden text-sm text-slate-600 sm:inline">
+          <span className="hidden text-sm text-white/70 sm:inline">
             {email}
           </span>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+          >
             Esci
           </Button>
         </div>
@@ -49,8 +59,8 @@ export function DashboardHeader({ email }: { email: string }) {
               key={link.href}
               href={link.href}
               className={cn(
-                "text-slate-600 transition-colors hover:text-slate-900",
-                pathname === link.href && "font-semibold text-slate-900",
+                "text-white/60 transition-colors hover:text-white",
+                pathname === link.href && "font-semibold text-amber-300",
               )}
             >
               {link.label}

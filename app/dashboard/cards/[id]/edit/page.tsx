@@ -106,7 +106,7 @@ export default function EditCardPage() {
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Caricamento...</p>;
+    return <p className="text-sm text-muted-foreground">Caricamento...</p>;
   }
 
   if (notFound) {
@@ -123,8 +123,8 @@ export default function EditCardPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Modifica carta</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-bold text-foreground">Modifica carta</h1>
+        <p className="text-sm text-muted-foreground">
           Aggiorna i dettagli della carta selezionata.
         </p>
       </div>
