@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
+import { notify, formatNewCardMessage } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -86,6 +87,15 @@ export default function NewCardPage() {
       setLoading(false);
       return;
     }
+
+    await notify(
+      formatNewCardMessage({
+        name,
+        setName: setName_ || null,
+        status,
+        purchasePrice: purchasePrice ? Number(purchasePrice) : null,
+      }),
+    );
 
     router.push("/dashboard");
     router.refresh();

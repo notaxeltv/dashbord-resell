@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
+import { notify, formatNewSaleMessage } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,6 +103,19 @@ export function NewSaleDialog({ cards }: { cards: CardOption[] }) {
     // Aggiorna lo stato della carta a "venduta". Operazione best-effort:
     // eventuali errori non bloccano la registrazione della vendita già salvata.
     await supabase.from("cards").update({ status: "sold" }).eq("id", cardId);
+
+    const soldCard = cards.find((card) => card.id === cardId);
+    await notify(
+      formatNewSaleMessage({
+        cardName: soldCard?.name ?? "Carta",
+        marketplace,
+        salePrice: Number(salePrice || 0),
+        netAmount:
+          Number(salePrice || 0) +
+          Number(shippingPaidByBuyer || 0) -
+          Number(fees || 0),
+      }),
+    );
 
     setLoading(false);
     setOpen(false);

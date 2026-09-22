@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
+import { notify, formatNewPurchaseMessage } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,6 +70,14 @@ export function NewPurchaseDialog() {
       setError(insertError.message);
       return;
     }
+
+    await notify(
+      formatNewPurchaseMessage({
+        source,
+        totalAmount: Number(totalAmount || 0),
+        shippingCost: Number(shippingCost || 0),
+      }),
+    );
 
     setOpen(false);
     resetForm();

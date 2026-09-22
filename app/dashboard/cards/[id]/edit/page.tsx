@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { supabase } from "@/lib/supabase";
+import { notify, formatCardStatusChangeMessage } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,7 @@ export default function EditCardPage() {
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [form, setForm] = useState<Partial<CardRow>>({});
+  const [initialStatus, setInitialStatus] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadCard() {
@@ -58,6 +60,7 @@ export default function EditCardPage() {
       }
 
       setForm(data as CardRow);
+      setInitialStatus((data as CardRow).status);
       setLoading(false);
     }
 
@@ -99,6 +102,21 @@ export default function EditCardPage() {
     if (error) {
       setError(error.message);
       return;
+    }
+
+    if (
+      initialStatus &&
+      form.status &&
+      form.status !== initialStatus &&
+      form.name
+    ) {
+      await notify(
+        formatCardStatusChangeMessage({
+          name: form.name,
+          oldStatus: initialStatus,
+          newStatus: form.status,
+        }),
+      );
     }
 
     router.push("/dashboard");

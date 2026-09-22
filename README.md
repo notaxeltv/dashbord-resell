@@ -13,9 +13,10 @@ persone (es. tu e un socio) con dati condivisi.
 3. [Funzionalità](#funzionalità)
 4. [Setup Supabase](#setup-supabase)
 5. [Setup locale](#setup-locale)
-6. [Deploy su Vercel](#deploy-su-vercel)
-7. [Invitare gli utenti del team](#invitare-gli-utenti-del-team)
-8. [Note e limitazioni](#note-e-limitazioni)
+6. [Notifiche Telegram e WhatsApp](#notifiche-telegram-e-whatsapp)
+7. [Deploy su Vercel](#deploy-su-vercel)
+8. [Invitare gli utenti del team](#invitare-gli-utenti-del-team)
+9. [Note e limitazioni](#note-e-limitazioni)
 
 ## Stack tecnico
 
@@ -36,6 +37,8 @@ persone (es. tu e un socio) con dati condivisi.
 │   ├── layout.tsx                     # Root layout (font, metadata)
 │   ├── page.tsx                       # Redirect a /dashboard o /login
 │   ├── globals.css                    # Stili globali Tailwind
+│   ├── api/
+│   │   └── notify/route.ts            # Route Handler: invio notifiche Telegram/WhatsApp
 │   ├── login/
 │   │   └── page.tsx                   # Pagina di login (email + password)
 │   └── dashboard/
@@ -48,7 +51,9 @@ persone (es. tu e un socio) con dati condivisi.
 │       └── sales/page.tsx             # Elenco + form vendite (dialog)
 ├── components/
 │   ├── ui/                            # Componenti shadcn/ui (button, input, ...)
-│   ├── dashboard/header.tsx           # Header con email utente + logout
+│   ├── dashboard/
+│   │   ├── header.tsx                 # Header con email utente + logout
+│   │   └── kpi-card.tsx               # Card KPI con accento colorato
 │   ├── cards/delete-card-button.tsx
 │   ├── purchases/
 │   │   ├── new-purchase-dialog.tsx
@@ -59,6 +64,7 @@ persone (es. tu e un socio) con dati condivisi.
 ├── lib/
 │   ├── supabase.ts                    # Client Supabase per il browser
 │   ├── supabase/server.ts             # Client Supabase per Server Components
+│   ├── notify.ts                      # Helper client + formattazione messaggi notifiche
 │   ├── types.ts                       # Tipi TypeScript delle tabelle
 │   ├── constants.ts                   # Liste/opzioni condivise (select, badge)
 │   └── utils.ts                       # Utility `cn()` per shadcn/ui
@@ -120,6 +126,22 @@ persone (es. tu e un socio) con dati condivisi.
 - Eliminazione riga con conferma (non ripristina automaticamente lo stato
   della carta collegata: se necessario, modificala manualmente da
   `/dashboard`).
+
+### Notifiche automatiche (Telegram / WhatsApp)
+
+L'app può inviare automaticamente un messaggio su un gruppo/chat Telegram
+e/o su WhatsApp (tramite Twilio) in questi casi:
+
+- **Nuova carta aggiunta** — nome, set, stato, prezzo di acquisto.
+- **Cambio di stato di una carta** (es. `in_stock` → `listed`,
+  `listed` → `sold`, ecc.), rilevato quando si salva una modifica.
+- **Nuovo acquisto registrato** — fonte, totale, spedizione.
+- **Nuova vendita registrata** — carta, marketplace, prezzo, netto.
+
+Entrambi i canali sono **opzionali e indipendenti**: se le relative
+variabili d'ambiente non sono configurate, l'app funziona normalmente senza
+inviare nulla. Vedi [Notifiche Telegram e WhatsApp](#notifiche-telegram-e-whatsapp)
+per la configurazione.
 
 ## Setup Supabase
 
@@ -195,6 +217,88 @@ utente (es. te stesso):
    anche la riga corrispondente in `public.profiles`.
 4. Torna su `http://localhost:3000/login` e accedi con email e password.
 
+## Notifiche Telegram e WhatsApp
+
+Le notifiche sono gestite da una Route Handler server-side
+(`app/api/notify/route.ts`) chiamata dal client dopo ogni operazione
+rilevante (`lib/notify.ts`). I token/segreti restano sempre lato server: non
+vengono mai esposti al browser. Puoi attivare uno o entrambi i canali.
+
+### Telegram
+
+1. Apri Telegram e cerca **@BotFather**.
+2. Invia `/newbot`, scegli un nome e uno username per il bot. BotFather ti
+   restituirà un **token** nel formato `123456789:AAExxxxxxxxxxxxxxxxxxxxx`
+   → sarà il valore di `TELEGRAM_BOT_TOKEN`.
+3. Cerca il tuo nuovo bot su Telegram e invia un qualsiasi messaggio (es.
+   "ciao") per avviare la conversazione. Se vuoi ricevere le notifiche su un
+   **gruppo**, crea il gruppo, aggiungi il bot come membro e invia un
+   messaggio nel gruppo.
+4. Recupera il tuo `chat_id` visitando nel browser:
+
+   ```
+   https://api.telegram.org/bot<TOKEN>/getUpdates
+   ```
+
+   Nel JSON di risposta cerca il campo `"chat":{"id": ...}` (per una chat
+   privata) o l'id negativo del gruppo (per un gruppo). Quel numero è il
+   valore di `TELEGRAM_CHAT_ID`.
+5. Imposta le due variabili in `.env.local` (locale) e tra le Environment
+   Variables di Vercel (produzione):
+
+   ```bash
+   TELEGRAM_BOT_TOKEN="123456789:AAExxxxxxxxxxxxxxxxxxxxx"
+   TELEGRAM_CHAT_ID="123456789"
+   ```
+
+### WhatsApp (via Twilio)
+
+L'API ufficiale WhatsApp Business di Meta richiede verifica aziendale e
+template di messaggio pre-approvati per scrivere per primi a un utente:
+troppo complessa per un tool interno di 2 persone. **Twilio** offre
+un'alternativa più semplice con una sandbox WhatsApp gratuita per lo
+sviluppo:
+
+1. Crea un account su [twilio.com](https://www.twilio.com) (il piano
+   trial è sufficiente per iniziare).
+2. Nella Console Twilio vai su **Messaging > Try it out > Send a WhatsApp
+   message** per attivare la Sandbox.
+3. Segui le istruzioni a schermo: invia dal tuo WhatsApp personale il codice
+   indicato (es. `join <parola-codice>`) al numero sandbox Twilio
+   (`+1 415 523 8886`) per collegare il tuo numero alla sandbox.
+4. Copia da Console Twilio (Account Dashboard):
+   - **Account SID** → `TWILIO_ACCOUNT_SID`
+   - **Auth Token** → `TWILIO_AUTH_TOKEN`
+5. Imposta le variabili in `.env.local`/Vercel:
+
+   ```bash
+   TWILIO_ACCOUNT_SID="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   TWILIO_AUTH_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   TWILIO_WHATSAPP_FROM="whatsapp:+14155238886"   # numero sandbox Twilio
+   TWILIO_WHATSAPP_TO="whatsapp:+391234567890"    # il tuo numero, con prefisso internazionale
+   ```
+
+**Limitazioni della sandbox**: è pensata per lo sviluppo/test, va
+"riattivata" reinviando il codice ogni ~3 giorni e può inviare messaggi solo
+ai numeri che si sono uniti alla sandbox. Per un uso in produzione stabile
+con WhatsApp servirebbe richiedere un numero WhatsApp Business verificato su
+Twilio (a pagamento, richiede approvazione).
+
+### Verifica rapida
+
+Con il server avviato (`npm run dev`) puoi testare la Route Handler
+direttamente, senza passare dalla UI:
+
+```bash
+curl -X POST http://localhost:3000/api/notify \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Test notifica 🃏"}'
+```
+
+La risposta indica per ciascun canale se il messaggio è stato inviato
+(`sent`), saltato perché non configurato (`skipped`) o se c'è stato un
+errore (es. token non valido).
+
 ## Deploy su Vercel
 
 1. Crea un repository GitHub con questo progetto e fai push del codice:
@@ -215,6 +319,10 @@ utente (es. te stesso):
    Variables** e aggiungi:
    - `NEXT_PUBLIC_SUPABASE_URL` = URL del progetto Supabase
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = anon key del progetto Supabase
+   - (opzionale) `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`,
+     `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`,
+     `TWILIO_WHATSAPP_TO` se vuoi abilitare le notifiche (vedi
+     [sezione dedicata](#notifiche-telegram-e-whatsapp))
 5. Clicca **Deploy**. Al termine avrai un URL pubblico (es.
    `https://tuo-progetto.vercel.app`).
 6. In Supabase, vai su **Authentication > URL Configuration** e aggiungi
@@ -260,3 +368,10 @@ sicuro al collaboratore.
   manualmente modificando la carta.
 - I campi numerici (prezzi) sono gestiti come `numeric(10,2)` per evitare
   problemi di arrotondamento tipici dei float.
+- Le notifiche Telegram/WhatsApp vengono inviate dal client subito dopo
+  un'operazione riuscita (insert/update): sono "best-effort" e non
+  garantite al 100% (es. se il dispositivo perde la connessione proprio in
+  quel momento). Per una garanzia di consegna più forte si potrebbe in
+  futuro spostare il trigger su un **Database Webhook di Supabase** che
+  chiama `/api/notify` direttamente dal database ad ogni insert/update,
+  indipendentemente dal client.
