@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Carte" },
   { href: "/dashboard/purchases", label: "Acquisti" },
   { href: "/dashboard/sales", label: "Vendite" },
+  { href: "/dashboard/report", label: "Resoconto" },
 ];
 
 export function DashboardHeader({ email }: { email: string }) {

@@ -1,3 +1,5 @@
+import { CircleDollarSign, TrendingUp } from "lucide-react";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   Card,
@@ -66,11 +68,17 @@ export default async function SalesPage() {
       )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <KpiCard label="Numero vendite" value={list.length} accent="magenta" />
+        <KpiCard
+          label="Numero vendite"
+          value={list.length}
+          accent="magenta"
+          icon={CircleDollarSign}
+        />
         <KpiCard
           label="Incasso netto totale"
           value={`€${totalRevenue.toFixed(2)}`}
           accent="emerald"
+          icon={TrendingUp}
         />
       </div>
 

@@ -1,3 +1,5 @@
+import { Coins, ShoppingCart } from "lucide-react";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   Card,
@@ -58,11 +60,17 @@ export default async function PurchasesPage() {
       )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <KpiCard label="Numero acquisti" value={list.length} accent="violet" />
+        <KpiCard
+          label="Numero acquisti"
+          value={list.length}
+          accent="violet"
+          icon={ShoppingCart}
+        />
         <KpiCard
           label="Totale spesa (con spedizioni)"
           value={`€${totalSpent.toFixed(2)}`}
           accent="gold"
+          icon={Coins}
         />
       </div>
 

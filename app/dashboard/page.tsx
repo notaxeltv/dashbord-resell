@@ -1,4 +1,13 @@
 import Link from "next/link";
+import {
+  CheckCircle2,
+  Clock,
+  Layers,
+  PackageOpen,
+  Tag,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -19,10 +28,22 @@ import {
 } from "@/components/ui/table";
 import { DeleteCardButton } from "@/components/cards/delete-card-button";
 import { KpiCard } from "@/components/dashboard/kpi-card";
-import { CARD_STATUS_BADGE_VARIANT, CARD_STATUS_LABELS } from "@/lib/constants";
+import {
+  CARD_STATUS_BADGE_VARIANT,
+  CARD_STATUS_LABELS,
+  CARD_STATUSES,
+} from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import type { Card as CardRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const STATUS_BAR_COLORS: Record<string, string> = {
+  in_stock: "from-violet-500 to-fuchsia-500",
+  listed: "from-amber-400 to-orange-500",
+  reserved: "from-fuchsia-500 to-rose-500",
+  sold: "from-emerald-400 to-teal-500",
+};
 
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
@@ -38,8 +59,35 @@ export default async function DashboardPage() {
     total: list.length,
     in_stock: list.filter((card) => card.status === "in_stock").length,
     listed: list.filter((card) => card.status === "listed").length,
+    reserved: list.filter((card) => card.status === "reserved").length,
     sold: list.filter((card) => card.status === "sold").length,
   };
+
+  const inPortfolio = list.filter((card) => card.status !== "sold");
+  const totalInvestment = inPortfolio.reduce(
+    (sum, card) => sum + Number(card.purchase_price ?? 0),
+    0,
+  );
+  const estimatedValue = inPortfolio.reduce(
+    (sum, card) =>
+      sum +
+      Number(card.current_market_price ?? card.target_price ?? card.purchase_price ?? 0),
+    0,
+  );
+  const potentialMargin = estimatedValue - totalInvestment;
+
+  const statusBreakdown = CARD_STATUSES.map((status) => ({
+    ...status,
+    count: list.filter((card) => card.status === status.value).length,
+  }));
+
+  const topCards = [...inPortfolio]
+    .sort(
+      (a, b) =>
+        Number(b.current_market_price ?? b.purchase_price ?? 0) -
+        Number(a.current_market_price ?? a.purchase_price ?? 0),
+    )
+    .slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -61,11 +109,112 @@ export default async function DashboardPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <KpiCard label="Totale carte" value={totals.total} accent="magenta" />
-        <KpiCard label="In stock" value={totals.in_stock} accent="violet" />
-        <KpiCard label="In vendita" value={totals.listed} accent="gold" />
-        <KpiCard label="Vendute" value={totals.sold} accent="emerald" />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <KpiCard label="Totale carte" value={totals.total} accent="magenta" icon={Layers} />
+        <KpiCard label="In stock" value={totals.in_stock} accent="violet" icon={PackageOpen} />
+        <KpiCard label="In vendita" value={totals.listed} accent="gold" icon={Tag} />
+        <KpiCard label="Riservate" value={totals.reserved} accent="magenta" icon={Clock} />
+        <KpiCard label="Vendute" value={totals.sold} accent="emerald" icon={CheckCircle2} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <KpiCard
+          label="Investimento in portafoglio"
+          value={`€${totalInvestment.toFixed(2)}`}
+          accent="violet"
+          icon={Wallet}
+          hint="Somma prezzi di acquisto delle carte non vendute"
+        />
+        <KpiCard
+          label="Valore stimato attuale"
+          value={`€${estimatedValue.toFixed(2)}`}
+          accent="gold"
+          icon={TrendingUp}
+          hint="Basato su prezzo di mercato, target o acquisto"
+        />
+        <KpiCard
+          label="Margine potenziale"
+          value={`${potentialMargin >= 0 ? "+" : "-"}€${Math.abs(potentialMargin).toFixed(2)}`}
+          accent={potentialMargin >= 0 ? "emerald" : "magenta"}
+          icon={TrendingUp}
+          hint="Valore stimato meno investimento"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Distribuzione per stato</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {statusBreakdown.map((status) => {
+              const pct = totals.total > 0 ? Math.round((status.count / totals.total) * 100) : 0;
+              return (
+                <div key={status.value} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-foreground">{status.label}</span>
+                    <span className="text-muted-foreground">
+                      {status.count} ({pct}%)
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={cn(
+                        "h-full rounded-full bg-gradient-to-r",
+                        STATUS_BAR_COLORS[status.value],
+                      )}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {totals.total === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nessuna carta ancora inserita.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Carte di maggior valore</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {topCards.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nessuna carta in portafoglio al momento.
+              </p>
+            )}
+            {topCards.map((card, index) => {
+              const value = Number(
+                card.current_market_price ?? card.target_price ?? card.purchase_price ?? 0,
+              );
+              return (
+                <div
+                  key={card.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border/60 px-3 py-2"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{card.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {card.set_name ?? "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">
+                    €{value.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
