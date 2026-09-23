@@ -87,71 +87,136 @@ export default async function SalesPage() {
           <CardTitle>Elenco vendite</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Carta</TableHead>
-                  <TableHead>Marketplace</TableHead>
-                  <TableHead>Prezzo</TableHead>
-                  <TableHead>Fee</TableHead>
-                  <TableHead>Netto</TableHead>
-                  <TableHead>Venduto da</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      Nessuna vendita registrata.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {list.map((sale) => {
-                  const card = cardMap.get(sale.card_id);
-                  const author = profileMap.get(sale.sold_by);
-                  return (
-                    <TableRow key={sale.id}>
-                      <TableCell>
-                        {new Date(sale.sale_date).toLocaleDateString("it-IT")}
-                      </TableCell>
-                      <TableCell>{card?.name ?? "Carta eliminata"}</TableCell>
-                      <TableCell className="capitalize">
-                        {sale.marketplace}
-                      </TableCell>
-                      <TableCell>
-                        €{Number(sale.sale_price).toFixed(2)}
-                      </TableCell>
-                      <TableCell>€{Number(sale.fees).toFixed(2)}</TableCell>
-                      <TableCell className="font-medium">
+          {list.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nessuna vendita registrata.
+            </p>
+          )}
+
+          {/* Vista a card impilate per mobile: evita che i bottoni Modifica/
+              Elimina finiscano fuori schermo richiedendo scroll orizzontale. */}
+          {list.length > 0 && (
+            <div className="space-y-3 sm:hidden">
+              {list.map((sale) => {
+                const card = cardMap.get(sale.card_id);
+                const author = profileMap.get(sale.sold_by);
+                const cardLabel = card
+                  ? `${card.name}${card.set_name ? ` (${card.set_name})` : ""}`
+                  : "Carta eliminata";
+                return (
+                  <div
+                    key={sale.id}
+                    className="rounded-lg border border-border/60 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {card?.name ?? "Carta eliminata"}
+                        </p>
+                        <p className="text-sm capitalize text-muted-foreground">
+                          {sale.marketplace} ·{" "}
+                          {new Date(sale.sale_date).toLocaleDateString("it-IT")}
+                        </p>
+                      </div>
+                      <p className="text-lg font-semibold text-foreground">
                         €{Number(sale.net_amount).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        {author?.display_name ?? author?.email ?? "-"}
-                      </TableCell>
-                      <TableCell className="space-x-2 whitespace-nowrap text-right">
-                        <SaleDialog
-                          cards={availableCards}
-                          sale={sale}
-                          cardLabel={
-                            card
-                              ? `${card.name}${card.set_name ? ` (${card.set_name})` : ""}`
-                              : "Carta eliminata"
-                          }
-                        />
-                        <DeleteSaleButton saleId={sale.id} />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                      </p>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Prezzo</p>
+                        <p className="font-medium text-foreground">
+                          €{Number(sale.sale_price).toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Fee</p>
+                        <p className="font-medium text-foreground">
+                          €{Number(sale.fees).toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Venduto da</p>
+                        <p className="font-medium text-foreground">
+                          {author?.display_name ?? author?.email ?? "-"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex gap-2">
+                      <SaleDialog
+                        cards={availableCards}
+                        sale={sale}
+                        cardLabel={cardLabel}
+                        triggerClassName="flex-1"
+                      />
+                      <DeleteSaleButton saleId={sale.id} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Vista tabellare per tablet/desktop. */}
+          {list.length > 0 && (
+            <div className="hidden overflow-x-auto sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Carta</TableHead>
+                    <TableHead>Marketplace</TableHead>
+                    <TableHead>Prezzo</TableHead>
+                    <TableHead>Fee</TableHead>
+                    <TableHead>Netto</TableHead>
+                    <TableHead>Venduto da</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {list.map((sale) => {
+                    const card = cardMap.get(sale.card_id);
+                    const author = profileMap.get(sale.sold_by);
+                    return (
+                      <TableRow key={sale.id}>
+                        <TableCell>
+                          {new Date(sale.sale_date).toLocaleDateString("it-IT")}
+                        </TableCell>
+                        <TableCell>{card?.name ?? "Carta eliminata"}</TableCell>
+                        <TableCell className="capitalize">
+                          {sale.marketplace}
+                        </TableCell>
+                        <TableCell>
+                          €{Number(sale.sale_price).toFixed(2)}
+                        </TableCell>
+                        <TableCell>€{Number(sale.fees).toFixed(2)}</TableCell>
+                        <TableCell className="font-medium">
+                          €{Number(sale.net_amount).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          {author?.display_name ?? author?.email ?? "-"}
+                        </TableCell>
+                        <TableCell className="space-x-2 whitespace-nowrap text-right">
+                          <SaleDialog
+                            cards={availableCards}
+                            sale={sale}
+                            cardLabel={
+                              card
+                                ? `${card.name}${card.set_name ? ` (${card.set_name})` : ""}`
+                                : "Carta eliminata"
+                            }
+                          />
+                          <DeleteSaleButton saleId={sale.id} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

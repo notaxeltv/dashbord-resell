@@ -24,9 +24,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import type { Transaction } from "@/lib/types";
 
-export function TransactionDialog({ transaction }: { transaction?: Transaction }) {
+export function TransactionDialog({
+  transaction,
+  triggerClassName,
+}: {
+  transaction?: Transaction;
+  triggerClassName?: string;
+}) {
   const isEdit = Boolean(transaction);
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -104,11 +111,11 @@ export function TransactionDialog({ transaction }: { transaction?: Transaction }
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isEdit ? (
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className={cn(triggerClassName)}>
             Modifica
           </Button>
         ) : (
-          <Button>+ Movimento extra</Button>
+          <Button className={cn(triggerClassName)}>+ Movimento extra</Button>
         )}
       </DialogTrigger>
       <DialogContent>

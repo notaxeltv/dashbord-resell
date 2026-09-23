@@ -18,13 +18,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import type { Purchase } from "@/lib/types";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function PurchaseDialog({ purchase }: { purchase?: Purchase }) {
+export function PurchaseDialog({
+  purchase,
+  triggerClassName,
+}: {
+  purchase?: Purchase;
+  triggerClassName?: string;
+}) {
   const isEdit = Boolean(purchase);
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -118,11 +125,11 @@ export function PurchaseDialog({ purchase }: { purchase?: Purchase }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isEdit ? (
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className={cn(triggerClassName)}>
             Modifica
           </Button>
         ) : (
-          <Button>+ Nuovo acquisto</Button>
+          <Button className={cn(triggerClassName)}>+ Nuovo acquisto</Button>
         )}
       </DialogTrigger>
       <DialogContent>

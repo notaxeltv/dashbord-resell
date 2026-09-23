@@ -79,62 +79,117 @@ export default async function PurchasesPage() {
           <CardTitle>Elenco acquisti</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Fonte</TableHead>
-                  <TableHead>Totale</TableHead>
-                  <TableHead>Spedizione</TableHead>
-                  <TableHead>Note</TableHead>
-                  <TableHead>Inserito da</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      Nessun acquisto registrato.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {list.map((purchase) => {
-                  const author = profileMap.get(purchase.created_by);
-                  return (
-                    <TableRow key={purchase.id}>
-                      <TableCell>
-                        {new Date(purchase.date).toLocaleDateString("it-IT")}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {purchase.source}
-                      </TableCell>
-                      <TableCell>
+          {list.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nessun acquisto registrato.
+            </p>
+          )}
+
+          {/* Vista a card impilate per mobile: evita che i bottoni Modifica/
+              Elimina finiscano fuori schermo richiedendo scroll orizzontale. */}
+          {list.length > 0 && (
+            <div className="space-y-3 sm:hidden">
+              {list.map((purchase) => {
+                const author = profileMap.get(purchase.created_by);
+                return (
+                  <div
+                    key={purchase.id}
+                    className="rounded-lg border border-border/60 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium capitalize text-foreground">
+                          {purchase.source}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(purchase.date).toLocaleDateString("it-IT")}
+                        </p>
+                      </div>
+                      <p className="text-lg font-semibold text-foreground">
                         €{Number(purchase.total_amount).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        €{Number(purchase.shipping_cost ?? 0).toFixed(2)}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {purchase.notes ?? "-"}
-                      </TableCell>
-                      <TableCell>
-                        {author?.display_name ?? author?.email ?? "-"}
-                      </TableCell>
-                      <TableCell className="space-x-2 whitespace-nowrap text-right">
-                        <PurchaseDialog purchase={purchase} />
-                        <DeletePurchaseButton purchaseId={purchase.id} />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                      </p>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Spedizione</p>
+                        <p className="font-medium text-foreground">
+                          €{Number(purchase.shipping_cost ?? 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Inserito da</p>
+                        <p className="font-medium text-foreground">
+                          {author?.display_name ?? author?.email ?? "-"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {purchase.notes && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {purchase.notes}
+                      </p>
+                    )}
+
+                    <div className="mt-3 flex gap-2">
+                      <PurchaseDialog purchase={purchase} triggerClassName="flex-1" />
+                      <DeletePurchaseButton purchaseId={purchase.id} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Vista tabellare per tablet/desktop. */}
+          {list.length > 0 && (
+            <div className="hidden overflow-x-auto sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Fonte</TableHead>
+                    <TableHead>Totale</TableHead>
+                    <TableHead>Spedizione</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead>Inserito da</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {list.map((purchase) => {
+                    const author = profileMap.get(purchase.created_by);
+                    return (
+                      <TableRow key={purchase.id}>
+                        <TableCell>
+                          {new Date(purchase.date).toLocaleDateString("it-IT")}
+                        </TableCell>
+                        <TableCell className="capitalize">
+                          {purchase.source}
+                        </TableCell>
+                        <TableCell>
+                          €{Number(purchase.total_amount).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          €{Number(purchase.shipping_cost ?? 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {purchase.notes ?? "-"}
+                        </TableCell>
+                        <TableCell>
+                          {author?.display_name ?? author?.email ?? "-"}
+                        </TableCell>
+                        <TableCell className="space-x-2 whitespace-nowrap text-right">
+                          <PurchaseDialog purchase={purchase} />
+                          <DeletePurchaseButton purchaseId={purchase.id} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

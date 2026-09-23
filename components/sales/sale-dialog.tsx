@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { MARKETPLACES } from "@/lib/constants";
 import type { Sale } from "@/lib/types";
 
@@ -43,10 +44,12 @@ export function SaleDialog({
   cards,
   sale,
   cardLabel,
+  triggerClassName,
 }: {
   cards: CardOption[];
   sale?: Sale;
   cardLabel?: string;
+  triggerClassName?: string;
 }) {
   const isEdit = Boolean(sale);
   const router = useRouter();
@@ -165,11 +168,11 @@ export function SaleDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isEdit ? (
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className={cn(triggerClassName)}>
             Modifica
           </Button>
         ) : (
-          <Button>+ Nuova vendita</Button>
+          <Button className={cn(triggerClassName)}>+ Nuova vendita</Button>
         )}
       </DialogTrigger>
       <DialogContent>

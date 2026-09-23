@@ -274,47 +274,37 @@ export default async function AccountingPage({
           <TransactionDialog />
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Descrizione</TableHead>
-                  <TableHead className="text-right">Importo</TableHead>
-                  <TableHead>Inserito da</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {yearTransactions.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      Nessun movimento extra registrato per il {selectedYear}.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {yearTransactions.map((transaction) => {
-                  const author = profileMap.get(transaction.created_by);
-                  return (
-                    <TableRow key={transaction.id}>
-                      <TableCell>
-                        {new Date(transaction.created_at).toLocaleDateString("it-IT")}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={transaction.type === "income" ? "success" : "warning"}>
+          {yearTransactions.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nessun movimento extra registrato per il {selectedYear}.
+            </p>
+          )}
+
+          {/* Vista a card impilate per mobile: evita che i bottoni Modifica/
+              Elimina finiscano fuori schermo richiedendo scroll orizzontale. */}
+          {yearTransactions.length > 0 && (
+            <div className="space-y-3 sm:hidden">
+              {yearTransactions.map((transaction) => {
+                const author = profileMap.get(transaction.created_by);
+                return (
+                  <div
+                    key={transaction.id}
+                    className="rounded-lg border border-border/60 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <Badge
+                          variant={transaction.type === "income" ? "success" : "warning"}
+                        >
                           {transaction.type === "income" ? "Entrata" : "Spesa"}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[240px] truncate">
-                        {transaction.description ?? "-"}
-                      </TableCell>
-                      <TableCell
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {new Date(transaction.created_at).toLocaleDateString("it-IT")}
+                        </p>
+                      </div>
+                      <p
                         className={cn(
-                          "text-right font-medium",
+                          "text-lg font-semibold",
                           transaction.type === "income"
                             ? "text-emerald-600"
                             : "text-amber-600",
@@ -322,20 +312,84 @@ export default async function AccountingPage({
                       >
                         {transaction.type === "income" ? "+" : "-"}€
                         {Number(transaction.amount).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        {author?.display_name ?? author?.email ?? "-"}
-                      </TableCell>
-                      <TableCell className="space-x-2 whitespace-nowrap text-right">
-                        <TransactionDialog transaction={transaction} />
-                        <DeleteTransactionButton transactionId={transaction.id} />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                      </p>
+                    </div>
+
+                    {transaction.description && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {transaction.description}
+                      </p>
+                    )}
+
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Inserito da {author?.display_name ?? author?.email ?? "-"}
+                    </p>
+
+                    <div className="mt-3 flex gap-2">
+                      <TransactionDialog transaction={transaction} triggerClassName="flex-1" />
+                      <DeleteTransactionButton transactionId={transaction.id} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Vista tabellare per tablet/desktop. */}
+          {yearTransactions.length > 0 && (
+            <div className="hidden overflow-x-auto sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Descrizione</TableHead>
+                    <TableHead className="text-right">Importo</TableHead>
+                    <TableHead>Inserito da</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {yearTransactions.map((transaction) => {
+                    const author = profileMap.get(transaction.created_by);
+                    return (
+                      <TableRow key={transaction.id}>
+                        <TableCell>
+                          {new Date(transaction.created_at).toLocaleDateString("it-IT")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={transaction.type === "income" ? "success" : "warning"}>
+                            {transaction.type === "income" ? "Entrata" : "Spesa"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[240px] truncate">
+                          {transaction.description ?? "-"}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            "text-right font-medium",
+                            transaction.type === "income"
+                              ? "text-emerald-600"
+                              : "text-amber-600",
+                          )}
+                        >
+                          {transaction.type === "income" ? "+" : "-"}€
+                          {Number(transaction.amount).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          {author?.display_name ?? author?.email ?? "-"}
+                        </TableCell>
+                        <TableCell className="space-x-2 whitespace-nowrap text-right">
+                          <TransactionDialog transaction={transaction} />
+                          <DeleteTransactionButton transactionId={transaction.id} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
