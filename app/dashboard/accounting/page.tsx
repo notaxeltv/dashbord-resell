@@ -25,7 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { YearFilter } from "@/components/accounting/year-filter";
-import { NewTransactionDialog } from "@/components/accounting/new-transaction-dialog";
+import { TransactionDialog } from "@/components/accounting/transaction-dialog";
 import { DeleteTransactionButton } from "@/components/accounting/delete-transaction-button";
 import { TaxEstimator } from "@/components/accounting/tax-estimator";
 import { cn } from "@/lib/utils";
@@ -271,7 +271,7 @@ export default async function AccountingPage({
           <CardTitle className="flex items-center gap-2">
             <Coins className="h-4 w-4" /> Movimenti extra
           </CardTitle>
-          <NewTransactionDialog />
+          <TransactionDialog />
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -326,7 +326,8 @@ export default async function AccountingPage({
                       <TableCell>
                         {author?.display_name ?? author?.email ?? "-"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="space-x-2 whitespace-nowrap text-right">
+                        <TransactionDialog transaction={transaction} />
                         <DeleteTransactionButton transactionId={transaction.id} />
                       </TableCell>
                     </TableRow>

@@ -125,6 +125,8 @@ persone (es. tu e un socio) con dati condivisi.
 - KPI: numero acquisti, totale spesa (incluse spedizioni).
 - **+ Nuovo acquisto** apre una modale (shadcn `Dialog`) con il form di
   inserimento; `created_by` viene impostato sull'utente loggato.
+- **Modifica** apre la stessa modale precompilata con i dati esistenti, per
+  correggere un inserimento errato (data, fonte, importi, note).
 - Eliminazione riga con conferma.
 
 ### Vendite (`/dashboard/sales`)
@@ -137,6 +139,10 @@ persone (es. tu e un socio) con dati condivisi.
   compratore, fee, data, info acquirente, note. `sold_by` viene impostato
   sull'utente loggato; alla creazione la carta collegata viene aggiornata a
   stato `sold`.
+- **Modifica** apre la stessa modale precompilata per correggere marketplace,
+  prezzo, spedizione, fee, data, acquirente o note. La carta collegata non è
+  modificabile da qui (per cambiarla, elimina la vendita e creane una nuova),
+  così da evitare incongruenze sullo stato delle carte.
 - Eliminazione riga con conferma (non ripristina automaticamente lo stato
   della carta collegata: se necessario, modificala manualmente da
   `/dashboard`).
@@ -166,7 +172,8 @@ persone (es. tu e un socio) con dati condivisi.
   entrate o spese non legate a una singola carta (es. abbonamenti
   piattaforme, materiali di imballaggio, commissioni), usando la tabella
   `transactions` già prevista nello schema. Vengono incluse automaticamente
-  nel bilancio.
+  nel bilancio. Ogni riga ha anche **Modifica** (stesso form precompilato)
+  ed **Elimina**, per correggere eventuali errori di inserimento.
 - **Stima delle tasse**: simulatore interattivo con due regimi selezionabili:
   - **Forfettario**: reddito imponibile = ricavi totali × coefficiente di
     redditività (default 40%, modificabile), imposta sostitutiva (5% o

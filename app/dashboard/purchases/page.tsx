@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { NewPurchaseDialog } from "@/components/purchases/new-purchase-dialog";
+import { PurchaseDialog } from "@/components/purchases/purchase-dialog";
 import { DeletePurchaseButton } from "@/components/purchases/delete-purchase-button";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import type { Purchase, Profile } from "@/lib/types";
@@ -50,7 +50,7 @@ export default async function PurchasesPage() {
             Storico degli acquisti effettuati dal team.
           </p>
         </div>
-        <NewPurchaseDialog />
+        <PurchaseDialog />
       </div>
 
       {error && (
@@ -125,7 +125,8 @@ export default async function PurchasesPage() {
                       <TableCell>
                         {author?.display_name ?? author?.email ?? "-"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="space-x-2 whitespace-nowrap text-right">
+                        <PurchaseDialog purchase={purchase} />
                         <DeletePurchaseButton purchaseId={purchase.id} />
                       </TableCell>
                     </TableRow>

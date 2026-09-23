@@ -18,35 +18,65 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import type { Purchase } from "@/lib/types";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function NewPurchaseDialog() {
+export function PurchaseDialog({ purchase }: { purchase?: Purchase }) {
+  const isEdit = Boolean(purchase);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [date, setDate] = useState(todayISO());
-  const [source, setSource] = useState("");
-  const [totalAmount, setTotalAmount] = useState("");
-  const [shippingCost, setShippingCost] = useState("0");
-  const [notes, setNotes] = useState("");
+  const [date, setDate] = useState(purchase?.date ?? todayISO());
+  const [source, setSource] = useState(purchase?.source ?? "");
+  const [totalAmount, setTotalAmount] = useState(
+    purchase ? String(purchase.total_amount) : "",
+  );
+  const [shippingCost, setShippingCost] = useState(
+    purchase ? String(purchase.shipping_cost ?? 0) : "0",
+  );
+  const [notes, setNotes] = useState(purchase?.notes ?? "");
 
   function resetForm() {
-    setDate(todayISO());
-    setSource("");
-    setTotalAmount("");
-    setShippingCost("0");
-    setNotes("");
+    setDate(purchase?.date ?? todayISO());
+    setSource(purchase?.source ?? "");
+    setTotalAmount(purchase ? String(purchase.total_amount) : "");
+    setShippingCost(purchase ? String(purchase.shipping_cost ?? 0) : "0");
+    setNotes(purchase?.notes ?? "");
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (isEdit && purchase) {
+      const { error: updateError } = await supabase
+        .from("purchases")
+        .update({
+          date,
+          source,
+          total_amount: Number(totalAmount || 0),
+          shipping_cost: Number(shippingCost || 0),
+          notes: notes || null,
+        })
+        .eq("id", purchase.id);
+
+      setLoading(false);
+
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
+
+      setOpen(false);
+      router.refresh();
+      return;
+    }
 
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData.user) {
@@ -87,13 +117,21 @@ export function NewPurchaseDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>+ Nuovo acquisto</Button>
+        {isEdit ? (
+          <Button variant="outline" size="sm">
+            Modifica
+          </Button>
+        ) : (
+          <Button>+ Nuovo acquisto</Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuovo acquisto</DialogTitle>
+          <DialogTitle>{isEdit ? "Modifica acquisto" : "Nuovo acquisto"}</DialogTitle>
           <DialogDescription>
-            Registra un nuovo acquisto (lotto, carta singola, ecc.).
+            {isEdit
+              ? "Correggi i dati di questo acquisto."
+              : "Registra un nuovo acquisto (lotto, carta singola, ecc.)."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

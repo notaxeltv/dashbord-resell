@@ -24,27 +24,55 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import type { Transaction } from "@/lib/types";
 
-export function NewTransactionDialog() {
+export function TransactionDialog({ transaction }: { transaction?: Transaction }) {
+  const isEdit = Boolean(transaction);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [type, setType] = useState<"income" | "expense">("expense");
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
+  const [type, setType] = useState<"income" | "expense">(
+    transaction?.type ?? "expense",
+  );
+  const [amount, setAmount] = useState(
+    transaction ? String(transaction.amount) : "",
+  );
+  const [description, setDescription] = useState(transaction?.description ?? "");
 
   function resetForm() {
-    setType("expense");
-    setAmount("");
-    setDescription("");
+    setType(transaction?.type ?? "expense");
+    setAmount(transaction ? String(transaction.amount) : "");
+    setDescription(transaction?.description ?? "");
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+
+    if (isEdit && transaction) {
+      const { error: updateError } = await supabase
+        .from("transactions")
+        .update({
+          type,
+          amount: Number(amount || 0),
+          description: description || null,
+        })
+        .eq("id", transaction.id);
+
+      setLoading(false);
+
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
+
+      setOpen(false);
+      router.refresh();
+      return;
+    }
 
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData.user) {
@@ -75,14 +103,23 @@ export function NewTransactionDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>+ Movimento extra</Button>
+        {isEdit ? (
+          <Button variant="outline" size="sm">
+            Modifica
+          </Button>
+        ) : (
+          <Button>+ Movimento extra</Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nuovo movimento extra</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Modifica movimento" : "Nuovo movimento extra"}
+          </DialogTitle>
           <DialogDescription>
-            Registra un&apos;entrata o una spesa non legata a una singola
-            carta (es. abbonamenti, materiali di imballaggio, commissioni).
+            {isEdit
+              ? "Correggi i dati di questo movimento."
+              : "Registra un'entrata o una spesa non legata a una singola carta (es. abbonamenti, materiali di imballaggio, commissioni)."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

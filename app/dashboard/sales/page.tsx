@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { NewSaleDialog, type CardOption } from "@/components/sales/new-sale-dialog";
+import { SaleDialog, type CardOption } from "@/components/sales/sale-dialog";
 import { DeleteSaleButton } from "@/components/sales/delete-sale-button";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import type { Sale, Profile } from "@/lib/types";
@@ -58,7 +58,7 @@ export default async function SalesPage() {
             Storico delle vendite effettuate dal team.
           </p>
         </div>
-        <NewSaleDialog cards={availableCards} />
+        <SaleDialog cards={availableCards} />
       </div>
 
       {error && (
@@ -134,7 +134,16 @@ export default async function SalesPage() {
                       <TableCell>
                         {author?.display_name ?? author?.email ?? "-"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="space-x-2 whitespace-nowrap text-right">
+                        <SaleDialog
+                          cards={availableCards}
+                          sale={sale}
+                          cardLabel={
+                            card
+                              ? `${card.name}${card.set_name ? ` (${card.set_name})` : ""}`
+                              : "Carta eliminata"
+                          }
+                        />
                         <DeleteSaleButton saleId={sale.id} />
                       </TableCell>
                     </TableRow>
