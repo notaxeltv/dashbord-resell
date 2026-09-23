@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/dashboard/purchases", label: "Acquisti" },
   { href: "/dashboard/sales", label: "Vendite" },
   { href: "/dashboard/report", label: "Resoconto" },
+  { href: "/dashboard/accounting", label: "Contabilità" },
 ];
 
 export function DashboardHeader({ email }: { email: string }) {

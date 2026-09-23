@@ -48,19 +48,29 @@ persone (es. tu e un socio) con dati condivisi.
 │       │   ├── new/page.tsx           # Form "Nuova carta"
 │       │   └── [id]/edit/page.tsx     # Form di modifica carta
 │       ├── purchases/page.tsx         # Elenco + form acquisti (dialog)
-│       └── sales/page.tsx             # Elenco + form vendite (dialog)
+│       ├── sales/page.tsx             # Elenco + form vendite (dialog)
+│       ├── report/page.tsx            # Resoconto con filtri periodo (settimana/mese/anno/custom)
+│       └── accounting/page.tsx        # Contabilità: bilancio automatico + stima tasse
 ├── components/
 │   ├── ui/                            # Componenti shadcn/ui (button, input, ...)
 │   ├── dashboard/
 │   │   ├── header.tsx                 # Header con email utente + logout
-│   │   └── kpi-card.tsx               # Card KPI con accento colorato
+│   │   └── kpi-card.tsx               # Card KPI con accento colorato e icona
 │   ├── cards/delete-card-button.tsx
 │   ├── purchases/
 │   │   ├── new-purchase-dialog.tsx
 │   │   └── delete-purchase-button.tsx
-│   └── sales/
-│       ├── new-sale-dialog.tsx
-│       └── delete-sale-button.tsx
+│   ├── sales/
+│   │   ├── new-sale-dialog.tsx
+│   │   └── delete-sale-button.tsx
+│   ├── reports/
+│   │   ├── period-filter.tsx          # Filtro periodo (settimana/mese/anno/custom)
+│   │   └── spending-chart.tsx         # Grafico a barre acquisti vs vendite
+│   └── accounting/
+│       ├── year-filter.tsx            # Selettore anno fiscale
+│       ├── new-transaction-dialog.tsx # Form movimento extra (entrata/spesa)
+│       ├── delete-transaction-button.tsx
+│       └── tax-estimator.tsx          # Simulatore stima imposte (forfettario/ordinario)
 ├── lib/
 │   ├── supabase.ts                    # Client Supabase per il browser
 │   ├── supabase/server.ts             # Client Supabase per Server Components
@@ -94,7 +104,11 @@ persone (es. tu e un socio) con dati condivisi.
 
 ### Gestione carte (`/dashboard`, `/dashboard/cards/*`)
 
-- KPI: totale carte, in stock, in vendita, vendute.
+- KPI: totale carte, in stock, in vendita, riservate, vendute, più una
+  seconda riga con investimento in portafoglio, valore stimato attuale e
+  margine potenziale (calcolati sulle carte non vendute).
+- Card "Distribuzione per stato" (barre di progresso) e "Carte di maggior
+  valore" (top 5 per valore stimato), per una panoramica visiva immediata.
 - Tabella con nome, set, condizione, prezzo acquisto, prezzo target, stato,
   data di inserimento.
 - **+ Nuova carta** → form completo (`/dashboard/cards/new`) con tutti i
@@ -126,6 +140,46 @@ persone (es. tu e un socio) con dati condivisi.
 - Eliminazione riga con conferma (non ripristina automaticamente lo stato
   della carta collegata: se necessario, modificala manualmente da
   `/dashboard`).
+
+### Resoconto (`/dashboard/report`)
+
+- Filtri periodo: **Settimana**, **Mese**, **Anno** o **Personalizzato**
+  (con selettori data "Dal"/"Al"), gestiti via query string (`?period=...`)
+  così l'URL resta condivisibile/bookmarkabile.
+- KPI di periodo: totale acquistato, totale venduto (netto), margine netto,
+  numero di transazioni.
+- Grafico a barre (CSS puro, nessuna dipendenza esterna) che confronta
+  acquisti e vendite nel tempo, con granularità automatica in base alla
+  durata del periodo (giorno se ≤31 giorni, mese se più lungo, anno per
+  periodi pluriennali).
+- Tabella di dettaglio con tutti i movimenti (acquisti e vendite) ordinati
+  per data.
+
+### Contabilità (`/dashboard/accounting`)
+
+- Selettore **anno fiscale** (basato sugli anni presenti nei dati, più
+  l'anno corrente).
+- **Bilancio automatico**: KPI di ricavi totali, costi totali, utile netto
+  e numero di movimenti extra per l'anno selezionato, più un conto
+  economico mensile (ricavi, costi, utile per ciascun mese dell'anno).
+- **Movimenti extra**: tabella + form (`+ Movimento extra`) per registrare
+  entrate o spese non legate a una singola carta (es. abbonamenti
+  piattaforme, materiali di imballaggio, commissioni), usando la tabella
+  `transactions` già prevista nello schema. Vengono incluse automaticamente
+  nel bilancio.
+- **Stima delle tasse**: simulatore interattivo con due regimi selezionabili:
+  - **Forfettario**: reddito imponibile = ricavi totali × coefficiente di
+    redditività (default 40%, modificabile), imposta sostitutiva (5% o
+    15%, modificabile) e stima opzionale dei contributi INPS (aliquota
+    modificabile, default 24%).
+  - **Ordinario (semplificato)**: reddito imponibile = utile netto
+    dell'anno, IRPEF calcolata a scaglioni (23% fino a €28.000, 35% da
+    €28.001 a €50.000, 43% oltre €50.000) più una stima indicativa (2%) di
+    addizionali regionali/comunali.
+  - ⚠️ **È una stima indicativa a scopo di pianificazione**, calcolata solo
+    sui dati presenti nell'app: non sostituisce la consulenza di un
+    commercialista e non considera deduzioni, detrazioni, altre entrate o
+    la normativa fiscale in vigore nell'anno di riferimento.
 
 ### Notifiche automatiche (Telegram / WhatsApp)
 
