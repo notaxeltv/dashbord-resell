@@ -26,7 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DeleteCardButton } from "@/components/cards/delete-card-button";
+import { CardDialog } from "@/components/cards/card-dialog";
+import { CardThumbnail } from "@/components/cards/card-thumbnail";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import {
   CARD_STATUS_BADGE_VARIANT,
@@ -200,6 +201,11 @@ export default async function DashboardPage() {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
                       {index + 1}
                     </span>
+                    <CardThumbnail
+                      imageUrl={card.image_url}
+                      name={card.name}
+                      className="h-10 w-8"
+                    />
                     <div>
                       <p className="text-sm font-medium text-foreground">{card.name}</p>
                       <p className="text-xs text-muted-foreground">
@@ -222,82 +228,166 @@ export default async function DashboardPage() {
           <CardTitle>Elenco carte</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Set</TableHead>
-                  <TableHead>Condizione</TableHead>
-                  <TableHead>Acquisto</TableHead>
-                  <TableHead>Target</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead>Inserita il</TableHead>
-                  <TableHead className="text-right">Azioni</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.length === 0 && (
+          {list.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nessuna carta inserita. Aggiungi la prima carta con
+              &quot;+ Nuova carta&quot;.
+            </p>
+          )}
+
+          {/* Vista a card impilate: usata su mobile. Ogni riquadro è
+              cliccabile e apre un popup per visualizzare/modificare/
+              eliminare la carta, senza bisogno di scroll orizzontale né di
+              navigare su una pagina separata. */}
+          {list.length > 0 && (
+            <div className="space-y-3 sm:hidden">
+              {list.map((card) => (
+                <CardDialog
+                  key={card.id}
+                  card={card}
+                  triggerClassName="block rounded-lg border border-border/60 p-4"
+                  trigger={
+                    <>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <CardThumbnail
+                            imageUrl={card.image_url}
+                            name={card.name}
+                            className="h-16 w-12"
+                          />
+                          <div>
+                            <p className="font-medium text-foreground">
+                              {card.name}
+                              {card.is_foil && (
+                                <Badge variant="secondary" className="ml-2">
+                                  Foil
+                                </Badge>
+                              )}
+                              {card.is_japanese && (
+                                <Badge variant="outline" className="ml-2">
+                                  JP
+                                </Badge>
+                              )}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {card.set_name ?? "-"} · {card.condition}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={CARD_STATUS_BADGE_VARIANT[card.status] ?? "default"}
+                        >
+                          {CARD_STATUS_LABELS[card.status] ?? card.status}
+                        </Badge>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Acquisto</p>
+                          <p className="font-medium text-foreground">
+                            {card.purchase_price != null
+                              ? `€${Number(card.purchase_price).toFixed(2)}`
+                              : "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Target</p>
+                          <p className="font-medium text-foreground">
+                            {card.target_price != null
+                              ? `€${Number(card.target_price).toFixed(2)}`
+                              : "-"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Inserita il{" "}
+                        {new Date(card.created_at).toLocaleDateString("it-IT")}
+                        {" · "}Tocca per modificare o eliminare
+                      </p>
+                    </>
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Vista tabellare: usata da tablet/desktop in su. */}
+          {list.length > 0 && (
+            <div className="hidden overflow-x-auto sm:block">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      Nessuna carta inserita. Aggiungi la prima carta con
-                      &quot;+ Nuova carta&quot;.
-                    </TableCell>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Set</TableHead>
+                    <TableHead>Condizione</TableHead>
+                    <TableHead>Acquisto</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead>Inserita il</TableHead>
+                    <TableHead className="text-right">Azioni</TableHead>
                   </TableRow>
-                )}
-                {list.map((card) => (
-                  <TableRow key={card.id}>
-                    <TableCell className="font-medium">
-                      {card.name}
-                      {card.is_foil && (
-                        <Badge variant="secondary" className="ml-2">
-                          Foil
+                </TableHeader>
+                <TableBody>
+                  {list.map((card) => (
+                    <TableRow key={card.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-3">
+                          <CardThumbnail
+                            imageUrl={card.image_url}
+                            name={card.name}
+                            className="h-12 w-9"
+                          />
+                          <span>
+                            {card.name}
+                            {card.is_foil && (
+                              <Badge variant="secondary" className="ml-2">
+                                Foil
+                              </Badge>
+                            )}
+                            {card.is_japanese && (
+                              <Badge variant="outline" className="ml-2">
+                                JP
+                              </Badge>
+                            )}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{card.set_name ?? "-"}</TableCell>
+                      <TableCell>{card.condition}</TableCell>
+                      <TableCell>
+                        {card.purchase_price != null
+                          ? `€${Number(card.purchase_price).toFixed(2)}`
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {card.target_price != null
+                          ? `€${Number(card.target_price).toFixed(2)}`
+                          : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={CARD_STATUS_BADGE_VARIANT[card.status] ?? "default"}
+                        >
+                          {CARD_STATUS_LABELS[card.status] ?? card.status}
                         </Badge>
-                      )}
-                      {card.is_japanese && (
-                        <Badge variant="outline" className="ml-2">
-                          JP
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{card.set_name ?? "-"}</TableCell>
-                    <TableCell>{card.condition}</TableCell>
-                    <TableCell>
-                      {card.purchase_price != null
-                        ? `€${Number(card.purchase_price).toFixed(2)}`
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {card.target_price != null
-                        ? `€${Number(card.target_price).toFixed(2)}`
-                        : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={CARD_STATUS_BADGE_VARIANT[card.status] ?? "default"}
-                      >
-                        {CARD_STATUS_LABELS[card.status] ?? card.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(card.created_at).toLocaleDateString("it-IT")}
-                    </TableCell>
-                    <TableCell className="space-x-2 whitespace-nowrap text-right">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/dashboard/cards/${card.id}/edit`}>
-                          Modifica
-                        </Link>
-                      </Button>
-                      <DeleteCardButton cardId={card.id} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(card.created_at).toLocaleDateString("it-IT")}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        <CardDialog
+                          card={card}
+                          triggerClassName="inline-flex rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
+                          trigger={<>Modifica</>}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

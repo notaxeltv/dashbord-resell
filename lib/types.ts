@@ -26,6 +26,7 @@ export interface Card {
   current_market_price: number | null;
   status: CardStatus;
   notes: string | null;
+  image_url: string | null;
   owner_id: string;
   created_at: string;
   updated_at: string;

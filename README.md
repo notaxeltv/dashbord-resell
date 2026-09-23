@@ -14,9 +14,10 @@ persone (es. tu e un socio) con dati condivisi.
 4. [Setup Supabase](#setup-supabase)
 5. [Setup locale](#setup-locale)
 6. [Notifiche Telegram e WhatsApp](#notifiche-telegram-e-whatsapp)
-7. [Deploy su Vercel](#deploy-su-vercel)
-8. [Invitare gli utenti del team](#invitare-gli-utenti-del-team)
-9. [Note e limitazioni](#note-e-limitazioni)
+7. [Configurazione immagini carte (CardTrader)](#configurazione-immagini-carte-cardtrader)
+8. [Deploy su Vercel](#deploy-su-vercel)
+9. [Invitare gli utenti del team](#invitare-gli-utenti-del-team)
+10. [Note e limitazioni](#note-e-limitazioni)
 
 ## Stack tecnico
 
@@ -38,15 +39,16 @@ persone (es. tu e un socio) con dati condivisi.
 │   ├── page.tsx                       # Redirect a /dashboard o /login
 │   ├── globals.css                    # Stili globali Tailwind
 │   ├── api/
-│   │   └── notify/route.ts            # Route Handler: invio notifiche Telegram/WhatsApp
+│   │   ├── notify/route.ts            # Route Handler: invio notifiche Telegram/WhatsApp
+│   │   └── cards/[id]/image/route.ts  # Route Handler: ricerca immagine carta su CardTrader
 │   ├── login/
 │   │   └── page.tsx                   # Pagina di login (email + password)
 │   └── dashboard/
 │       ├── layout.tsx                 # Protezione rotte + header condiviso
-│       ├── page.tsx                   # KPI + elenco carte
+│       ├── page.tsx                   # KPI + elenco carte (card mobile / tabella desktop)
 │       ├── cards/
 │       │   ├── new/page.tsx           # Form "Nuova carta"
-│       │   └── [id]/edit/page.tsx     # Form di modifica carta
+│       │   └── [id]/edit/page.tsx     # Form di modifica carta (link diretto, non più usato dalla UI)
 │       ├── purchases/page.tsx         # Elenco + form acquisti (dialog)
 │       ├── sales/page.tsx             # Elenco + form vendite (dialog)
 │       ├── report/page.tsx            # Resoconto con filtri periodo (settimana/mese/anno/custom)
@@ -56,25 +58,28 @@ persone (es. tu e un socio) con dati condivisi.
 │   ├── dashboard/
 │   │   ├── header.tsx                 # Header con email utente + logout
 │   │   └── kpi-card.tsx               # Card KPI con accento colorato e icona
-│   ├── cards/delete-card-button.tsx
+│   ├── cards/
+│   │   ├── card-dialog.tsx            # Popup unico: vedi/modifica/elimina carta + immagine
+│   │   └── card-thumbnail.tsx         # Miniatura immagine carta (con placeholder)
 │   ├── purchases/
-│   │   ├── new-purchase-dialog.tsx
+│   │   ├── purchase-dialog.tsx        # Dialog crea/modifica acquisto
 │   │   └── delete-purchase-button.tsx
 │   ├── sales/
-│   │   ├── new-sale-dialog.tsx
+│   │   ├── sale-dialog.tsx            # Dialog crea/modifica vendita
 │   │   └── delete-sale-button.tsx
 │   ├── reports/
 │   │   ├── period-filter.tsx          # Filtro periodo (settimana/mese/anno/custom)
 │   │   └── spending-chart.tsx         # Grafico a barre acquisti vs vendite
 │   └── accounting/
 │       ├── year-filter.tsx            # Selettore anno fiscale
-│       ├── new-transaction-dialog.tsx # Form movimento extra (entrata/spesa)
+│       ├── transaction-dialog.tsx     # Dialog crea/modifica movimento extra
 │       ├── delete-transaction-button.tsx
 │       └── tax-estimator.tsx          # Simulatore stima imposte (forfettario/ordinario)
 ├── lib/
 │   ├── supabase.ts                    # Client Supabase per il browser
 │   ├── supabase/server.ts             # Client Supabase per Server Components
 │   ├── notify.ts                      # Helper client + formattazione messaggi notifiche
+│   ├── cardtrader.ts                  # Ricerca (server-only) immagini carte su CardTrader
 │   ├── types.ts                       # Tipi TypeScript delle tabelle
 │   ├── constants.ts                   # Liste/opzioni condivise (select, badge)
 │   └── utils.ts                       # Utility `cn()` per shadcn/ui
@@ -109,14 +114,33 @@ persone (es. tu e un socio) con dati condivisi.
   margine potenziale (calcolati sulle carte non vendute).
 - Card "Distribuzione per stato" (barre di progresso) e "Carte di maggior
   valore" (top 5 per valore stimato), per una panoramica visiva immediata.
-- Tabella con nome, set, condizione, prezzo acquisto, prezzo target, stato,
-  data di inserimento.
+- Elenco carte: su mobile è una lista di riquadri impilati (con miniatura,
+  badge di stato, prezzi), su tablet/desktop è la tabella classica con
+  nome, set, condizione, prezzo acquisto, prezzo target, stato, data di
+  inserimento e miniatura nella colonna "Nome".
 - **+ Nuova carta** → form completo (`/dashboard/cards/new`) con tutti i
   campi richiesti (nome, set, codice set, numero, lingua, condizione, foil,
   edizione giapponese, prezzo/data/fonte acquisto, prezzo target, stato,
   note). L'inserimento imposta `owner_id` sull'utente loggato.
-- **Modifica** → `/dashboard/cards/[id]/edit`, stesso form precompilato.
-- **Elimina** → bottone con conferma, direttamente dalla tabella.
+- **Visualizza / modifica / elimina** → clic sul riquadro (mobile) o su
+  "Modifica" (tabella desktop) apre un **popup unico** (`CardDialog`) con
+  tutti i campi della carta precompilati, l'immagine (vedi sotto) e un
+  bottone "Elimina carta" con conferma: non serve più navigare su una
+  pagina separata né fare scroll orizzontale per raggiungere le azioni.
+
+### Immagini carte (CardTrader)
+
+- Se è configurato `CARDTRADER_API_TOKEN` (vedi [sezione dedicata](#configurazione-immagini-carte-cardtrader)),
+  aprendo il popup di una carta senza immagine salvata l'app cerca
+  automaticamente su [CardTrader](https://www.cardtrader.com) un'immagine
+  corrispondente a nome + set della carta e, se trovata, la salva in
+  `cards.image_url` (così le volte successive è già disponibile ovunque:
+  riquadro mobile, tabella desktop, popup).
+- Nel popup è disponibile anche un bottone **"Cerca immagine"** per
+  ripetere la ricerca manualmente (utile dopo aver corretto nome o set).
+- Se il token non è configurato, o non viene trovata nessuna
+  corrispondenza, viene mostrato semplicemente un placeholder: nessuna
+  funzionalità dell'app viene bloccata.
 
 ### Acquisti (`/dashboard/purchases`)
 
@@ -214,7 +238,9 @@ per la configurazione.
    [`supabase/schema.sql`](./supabase/schema.sql) di questo repository e
    incollalo nell'editor.
 4. Esegui lo script (**Run**). Verranno creati:
-   - le tabelle `profiles`, `cards`, `purchases`, `sales`, `transactions`;
+   - le tabelle `profiles`, `cards` (inclusa la colonna `image_url`, usata
+     per l'immagine della carta recuperata da CardTrader), `purchases`,
+     `sales`, `transactions`;
    - il trigger `cards_set_updated_at` che aggiorna automaticamente
      `updated_at` su `cards` ad ogni modifica;
    - il trigger `on_auth_user_created` che crea automaticamente una riga in
@@ -231,6 +257,14 @@ per la configurazione.
    il provider **Email** sia attivo e, per un tool interno, disabilita
    "Allow new users to sign up" se vuoi impedire registrazioni pubbliche
    dirette (gli utenti verranno comunque creati tramite invito, vedi sotto).
+
+> **Hai già un progetto Supabase creato prima dell'introduzione della
+> colonna `image_url`?** Esegui questa singola istruzione nel SQL Editor
+> per aggiungerla senza dover rieseguire tutto lo script (è idempotente):
+>
+> ```sql
+> alter table public.cards add column if not exists image_url text;
+> ```
 
 ## Setup locale
 
@@ -360,6 +394,41 @@ La risposta indica per ciascun canale se il messaggio è stato inviato
 (`sent`), saltato perché non configurato (`skipped`) o se c'è stato un
 errore (es. token non valido).
 
+## Configurazione immagini carte (CardTrader)
+
+L'app può recuperare automaticamente l'immagine di una carta da
+[CardTrader](https://www.cardtrader.com), un marketplace di trading card
+che espone un'API con le immagini di migliaia di carte (comprese quelle
+Pokémon). È una funzionalità **opzionale**: senza token configurato, l'app
+funziona normalmente e mostra solo un placeholder al posto dell'immagine.
+
+1. Crea un account su [cardtrader.com](https://www.cardtrader.com) e vai su
+   **Settings > Connect > API** (o pagina equivalente per sviluppatori) per
+   generare un **token API** (un JWT lungo che inizia con `eyJ...`).
+2. Imposta la variabile in `.env.local` (locale) e tra le Environment
+   Variables di Vercel (produzione):
+
+   ```bash
+   CARDTRADER_API_TOKEN="eyJ..."
+   ```
+
+3. **Importante — sicurezza del token**:
+   - Questo token è un **segreto**: chiunque lo possieda può usarlo per
+     chiamare l'API di CardTrader a tuo nome. Non deve **mai** essere
+     salvato nel codice, in un commit Git, condiviso in chat/messaggi, o in
+     una variabile `NEXT_PUBLIC_*` (che finirebbe nel bundle JavaScript
+     inviato al browser). Viene usato solo lato server (`lib/cardtrader.ts`
+     e la Route Handler `app/api/cards/[id]/image/route.ts`).
+   - Se hai già condiviso questo token altrove, valuta di **rigenerarlo**
+     dal pannello CardTrader appena possibile, così il token precedente
+     smette di funzionare.
+4. La ricerca dell'immagine richiede sia un **nome carta** che un **set**
+   compilati sulla carta: senza set, la ricerca viene saltata (altrimenti
+   bisognerebbe scandire centinaia di espansioni ad ogni richiesta).
+5. Se in futuro vuoi disabilitare la funzionalità, basta rimuovere la
+   variabile d'ambiente: l'app continuerà a funzionare mostrando solo il
+   placeholder al posto delle immagini.
+
 ## Deploy su Vercel
 
 1. Crea un repository GitHub con questo progetto e fai push del codice:
@@ -384,6 +453,9 @@ errore (es. token non valido).
      `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`,
      `TWILIO_WHATSAPP_TO` se vuoi abilitare le notifiche (vedi
      [sezione dedicata](#notifiche-telegram-e-whatsapp))
+   - (opzionale) `CARDTRADER_API_TOKEN` se vuoi abilitare il recupero
+     automatico delle immagini delle carte (vedi
+     [sezione dedicata](#configurazione-immagini-carte-cardtrader))
 5. Clicca **Deploy**. Al termine avrai un URL pubblico (es.
    `https://tuo-progetto.vercel.app`).
 6. In Supabase, vai su **Authentication > URL Configuration** e aggiungi
@@ -436,3 +508,9 @@ sicuro al collaboratore.
   futuro spostare il trigger su un **Database Webhook di Supabase** che
   chiama `/api/notify` direttamente dal database ad ogni insert/update,
   indipendentemente dal client.
+- La ricerca immagini su CardTrader è "best effort" e basata sulla
+  corrispondenza testuale tra nome/set inseriti e i dati di CardTrader:
+  set con nomi non standard, refusi o carte molto rare/promozionali
+  potrebbero non trovare corrispondenza (in tal caso viene mostrato un
+  placeholder, senza errori). Puoi sempre ritentare con "Cerca immagine"
+  dal popup dopo aver corretto nome o set.

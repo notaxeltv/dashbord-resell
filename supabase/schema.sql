@@ -47,6 +47,7 @@ create table if not exists public.cards (
   status text not null default 'in_stock'
     check (status in ('in_stock', 'listed', 'sold', 'reserved')),
   notes text,
+  image_url text,
   owner_id uuid not null references public.profiles (id) on delete restrict,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
