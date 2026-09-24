@@ -1,6 +1,7 @@
 import { ImageOff } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { cardImageSrc } from "@/lib/card-image";
 
 /**
  * Miniatura dell'immagine di una carta (recuperata da CardTrader). Mostra
@@ -15,6 +16,8 @@ export function CardThumbnail({
   name: string;
   className?: string;
 }) {
+  const src = cardImageSrc(imageUrl);
+
   return (
     <div
       className={cn(
@@ -22,9 +25,9 @@ export function CardThumbnail({
         className,
       )}
     >
-      {imageUrl ? (
+      {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+        <img src={src} alt={name} className="h-full w-full object-cover" />
       ) : (
         <ImageOff className="h-4 w-4 text-muted-foreground" />
       )}

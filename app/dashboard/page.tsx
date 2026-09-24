@@ -29,13 +29,16 @@ import {
 import { CardDialog } from "@/components/cards/card-dialog";
 import { CardThumbnail } from "@/components/cards/card-thumbnail";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { cn } from "@/lib/utils";
+import { formatISODate } from "@/lib/dates";
+import { cardEstimatedValue } from "@/lib/finance";
 import {
+  CARD_CONDITION_LABELS,
   CARD_STATUS_BADGE_VARIANT,
   CARD_STATUS_LABELS,
   CARD_STATUSES,
 } from "@/lib/constants";
-import { cn } from "@/lib/utils";
-import type { Card as CardRow } from "@/lib/types";
+import type { Card as CardRow, PurchaseOption } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -49,12 +52,19 @@ const STATUS_BAR_COLORS: Record<string, string> = {
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
 
-  const { data: cards, error } = await supabase
-    .from("cards")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [{ data: cards, error }, { data: purchases }, { data: sales }] =
+    await Promise.all([
+      supabase.from("cards").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("purchases")
+        .select("id, date, source, total_amount")
+        .order("date", { ascending: false }),
+      supabase.from("sales").select("card_id"),
+    ]);
 
   const list = (cards ?? []) as CardRow[];
+  const purchaseOptions = (purchases ?? []) as PurchaseOption[];
+  const soldCardIds = new Set((sales ?? []).map((row) => row.card_id as string));
 
   const totals = {
     total: list.length,
@@ -70,9 +80,7 @@ export default async function DashboardPage() {
     0,
   );
   const estimatedValue = inPortfolio.reduce(
-    (sum, card) =>
-      sum +
-      Number(card.current_market_price ?? card.target_price ?? card.purchase_price ?? 0),
+    (sum, card) => sum + cardEstimatedValue(card),
     0,
   );
   const potentialMargin = estimatedValue - totalInvestment;
@@ -83,11 +91,7 @@ export default async function DashboardPage() {
   }));
 
   const topCards = [...inPortfolio]
-    .sort(
-      (a, b) =>
-        Number(b.current_market_price ?? b.purchase_price ?? 0) -
-        Number(a.current_market_price ?? a.purchase_price ?? 0),
-    )
+    .sort((a, b) => cardEstimatedValue(b) - cardEstimatedValue(a))
     .slice(0, 5);
 
   return (
@@ -189,9 +193,7 @@ export default async function DashboardPage() {
               </p>
             )}
             {topCards.map((card, index) => {
-              const value = Number(
-                card.current_market_price ?? card.target_price ?? card.purchase_price ?? 0,
-              );
+              const value = cardEstimatedValue(card);
               return (
                 <div
                   key={card.id}
@@ -245,6 +247,8 @@ export default async function DashboardPage() {
                 <CardDialog
                   key={card.id}
                   card={card}
+                  purchases={purchaseOptions}
+                  hasSale={soldCardIds.has(card.id)}
                   triggerClassName="block rounded-lg border border-border/60 p-4"
                   trigger={
                     <>
@@ -270,7 +274,8 @@ export default async function DashboardPage() {
                               )}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {card.set_name ?? "-"} · {card.condition}
+                              {card.set_name ?? "-"} ·{" "}
+                              {CARD_CONDITION_LABELS[card.condition] ?? card.condition}
                             </p>
                           </div>
                         </div>
@@ -301,8 +306,7 @@ export default async function DashboardPage() {
                       </div>
 
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Inserita il{" "}
-                        {new Date(card.created_at).toLocaleDateString("it-IT")}
+                        Inserita il {formatISODate(card.created_at)}
                         {" · "}Tocca per modificare o eliminare
                       </p>
                     </>
@@ -354,7 +358,9 @@ export default async function DashboardPage() {
                         </div>
                       </TableCell>
                       <TableCell>{card.set_name ?? "-"}</TableCell>
-                      <TableCell>{card.condition}</TableCell>
+                      <TableCell>
+                        {CARD_CONDITION_LABELS[card.condition] ?? card.condition}
+                      </TableCell>
                       <TableCell>
                         {card.purchase_price != null
                           ? `€${Number(card.purchase_price).toFixed(2)}`
@@ -372,12 +378,12 @@ export default async function DashboardPage() {
                           {CARD_STATUS_LABELS[card.status] ?? card.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        {new Date(card.created_at).toLocaleDateString("it-IT")}
-                      </TableCell>
+                      <TableCell>{formatISODate(card.created_at)}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <CardDialog
                           card={card}
+                          purchases={purchaseOptions}
+                          hasSale={soldCardIds.has(card.id)}
                           triggerClassName="inline-flex rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
                           trigger={<>Modifica</>}
                         />

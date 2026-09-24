@@ -78,6 +78,11 @@ comment on table public.purchases is 'Storico degli acquisti effettuati dal team
 
 create index if not exists purchases_created_by_idx on public.purchases (created_by);
 
+alter table public.cards
+  add column if not exists purchase_id uuid references public.purchases (id) on delete set null;
+
+create index if not exists cards_purchase_id_idx on public.cards (purchase_id);
+
 -- ============================================================================
 -- 4. TABELLA sales
 -- Storico delle vendite, collegate a una carta dell'inventario.
@@ -87,7 +92,7 @@ create index if not exists purchases_created_by_idx on public.purchases (created
 
 create table if not exists public.sales (
   id uuid primary key default gen_random_uuid(),
-  card_id uuid not null references public.cards (id) on delete cascade,
+  card_id uuid not null references public.cards (id) on delete restrict,
   marketplace text not null default 'cardmarket',
   sale_price numeric(10, 2) not null default 0,
   shipping_paid_by_buyer numeric(10, 2) not null default 0,
@@ -103,8 +108,22 @@ create table if not exists public.sales (
 
 comment on table public.sales is 'Storico delle vendite di carte dell''inventario.';
 
-create index if not exists sales_card_id_idx on public.sales (card_id);
 create index if not exists sales_sold_by_idx on public.sales (sold_by);
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where c.relname = 'sales_one_per_card_idx'
+      and n.nspname = 'public'
+  ) and not exists (
+    select card_id from public.sales group by card_id having count(*) > 1
+  ) then
+    create unique index sales_one_per_card_idx on public.sales (card_id);
+  end if;
+end;
+$$;
 
 -- ============================================================================
 -- 5. TABELLA transactions (opzionale)
@@ -116,6 +135,7 @@ create table if not exists public.transactions (
   type text not null check (type in ('income', 'expense')),
   amount numeric(10, 2) not null,
   description text,
+  date date not null default current_date,
   related_card_id uuid references public.cards (id) on delete set null,
   related_purchase_id uuid references public.purchases (id) on delete set null,
   related_sale_id uuid references public.sales (id) on delete set null,
@@ -148,6 +168,85 @@ create trigger cards_set_updated_at
   before update on public.cards
   for each row
   execute function public.set_updated_at();
+
+-- ============================================================================
+-- 6b. TRIGGER: allinea lo stato della carta alle vendite
+-- ============================================================================
+
+create or replace function public.handle_sale_insert()
+returns trigger
+language plpgsql
+as $$
+begin
+  update public.cards
+    set status = 'sold'
+    where id = new.card_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists sales_after_insert_set_sold on public.sales;
+
+create trigger sales_after_insert_set_sold
+  after insert on public.sales
+  for each row
+  execute function public.handle_sale_insert();
+
+create or replace function public.handle_sale_delete()
+returns trigger
+language plpgsql
+as $$
+begin
+  update public.cards
+    set status = 'in_stock'
+    where id = old.card_id
+      and status = 'sold'
+      and not exists (
+        select 1 from public.sales s
+        where s.card_id = old.card_id
+          and s.id <> old.id
+      );
+  return old;
+end;
+$$;
+
+drop trigger if exists sales_after_delete_restore_status on public.sales;
+
+create trigger sales_after_delete_restore_status
+  after delete on public.sales
+  for each row
+  execute function public.handle_sale_delete();
+
+create or replace function public.guard_card_sold_status()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.status = 'sold'
+     and (tg_op = 'INSERT' or old.status is distinct from 'sold')
+     and not exists (select 1 from public.sales where card_id = new.id)
+  then
+    raise exception 'Per marcare una carta come venduta registra una vendita.';
+  end if;
+
+  if tg_op = 'UPDATE'
+     and old.status = 'sold'
+     and new.status is distinct from 'sold'
+     and exists (select 1 from public.sales where card_id = new.id)
+  then
+    raise exception 'Elimina prima la vendita collegata a questa carta.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists cards_guard_sold_status on public.cards;
+
+create trigger cards_guard_sold_status
+  before insert or update of status on public.cards
+  for each row
+  execute function public.guard_card_sold_status();
 
 -- ============================================================================
 -- 7. TRIGGER: crea automaticamente un profilo quando viene creato un nuovo
@@ -278,6 +377,43 @@ create policy "transactions_update_authenticated" on public.transactions
 drop policy if exists "transactions_delete_authenticated" on public.transactions;
 create policy "transactions_delete_authenticated" on public.transactions
   for delete to authenticated using (true);
+
+-- ============================================================================
+-- 9. MIGRAZIONI IDEMPOTENTI (progetti già esistenti)
+-- ============================================================================
+
+alter table public.cards
+  add column if not exists image_url text;
+
+alter table public.transactions
+  add column if not exists date date;
+
+update public.transactions
+  set date = created_at::date
+  where date is null;
+
+alter table public.transactions
+  alter column date set default current_date;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'transactions'
+      and column_name = 'date'
+      and is_nullable = 'YES'
+  ) then
+    alter table public.transactions alter column date set not null;
+  end if;
+end;
+$$;
+
+alter table public.sales drop constraint if exists sales_card_id_fkey;
+alter table public.sales
+  add constraint sales_card_id_fkey
+  foreign key (card_id) references public.cards (id) on delete restrict;
 
 -- ============================================================================
 -- Fine script.

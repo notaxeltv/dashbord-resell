@@ -51,3 +51,18 @@ export const MARKETPLACES = [
   { value: "privato", label: "Privato" },
   { value: "altro", label: "Altro" },
 ] as const;
+
+/** Valore sentinella per i Select Radix (non accettano stringa vuota). */
+export const SELECT_NONE = "__none";
+
+export const CARD_STATUSES_EDITABLE = CARD_STATUSES.filter(
+  (status) => status.value !== "sold",
+);
+
+export function optionLabel(
+  options: readonly { readonly value: string; readonly label: string }[],
+  value: string | null | undefined,
+): string {
+  if (!value) return "-";
+  return options.find((item) => item.value === value)?.label ?? value;
+}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
 import { notify, formatNewSaleMessage } from "@/lib/notify";
+import { todayISO } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,10 +35,6 @@ export interface CardOption {
   name: string;
   set_name: string | null;
   status: string;
-}
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export function SaleDialog({
@@ -77,6 +74,7 @@ export function SaleDialog({
     setSaleDate(sale?.sale_date ?? todayISO());
     setBuyerInfo(sale?.buyer_info ?? "");
     setNotes(sale?.notes ?? "");
+    setError(null);
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -136,7 +134,11 @@ export function SaleDialog({
     });
 
     if (insertError) {
-      setError(insertError.message);
+      setError(
+        insertError.code === "23505"
+          ? "Questa carta ha già una vendita registrata."
+          : insertError.message,
+      );
       setLoading(false);
       return;
     }
@@ -165,7 +167,13 @@ export function SaleDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) resetForm();
+      }}
+    >
       <DialogTrigger asChild>
         {isEdit ? (
           <Button variant="outline" size="sm" className={cn(triggerClassName)}>
@@ -181,7 +189,7 @@ export function SaleDialog({
           <DialogDescription>
             {isEdit
               ? "Correggi i dati di questa vendita."
-              : "Registra la vendita di una carta in stock o in vendita."}
+              : "Registra la vendita di una carta non ancora venduta."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

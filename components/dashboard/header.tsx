@@ -62,7 +62,12 @@ export function DashboardHeader({ email }: { email: string }) {
               href={link.href}
               className={cn(
                 "text-white/60 transition-colors hover:text-white",
-                pathname === link.href && "font-semibold text-amber-300",
+                (link.href === "/dashboard"
+                  ? pathname === "/dashboard" ||
+                    pathname.startsWith("/dashboard/cards")
+                  : pathname === link.href ||
+                    pathname.startsWith(`${link.href}/`)) &&
+                  "font-semibold text-amber-300",
               )}
             >
               {link.label}

@@ -27,11 +27,14 @@ import {
 } from "@/components/ui/card";
 import {
   CARD_CONDITIONS,
+  CARD_CONDITION_LABELS,
   CARD_LANGUAGES,
-  CARD_STATUSES,
+  CARD_STATUSES_EDITABLE,
   PURCHASE_SOURCES,
+  SELECT_NONE,
 } from "@/lib/constants";
-import type { Card as CardRow } from "@/lib/types";
+import { formatISODate } from "@/lib/dates";
+import type { Card as CardRow, PurchaseOption } from "@/lib/types";
 
 export default function EditCardPage() {
   const params = useParams<{ id: string }>();
@@ -44,6 +47,8 @@ export default function EditCardPage() {
   const [notFound, setNotFound] = useState(false);
   const [form, setForm] = useState<Partial<CardRow>>({});
   const [initialStatus, setInitialStatus] = useState<string | null>(null);
+  const [purchases, setPurchases] = useState<PurchaseOption[]>([]);
+  const [hasSale, setHasSale] = useState(false);
 
   useEffect(() => {
     async function loadCard() {
@@ -62,6 +67,16 @@ export default function EditCardPage() {
       setForm(data as CardRow);
       setInitialStatus((data as CardRow).status);
       setLoading(false);
+
+      const [{ data: purchaseRows }, { data: saleRows }] = await Promise.all([
+        supabase
+          .from("purchases")
+          .select("id, date, source, total_amount")
+          .order("date", { ascending: false }),
+        supabase.from("sales").select("id").eq("card_id", cardId).limit(1),
+      ]);
+      setPurchases((purchaseRows ?? []) as PurchaseOption[]);
+      setHasSale((saleRows ?? []).length > 0);
     }
 
     loadCard();
@@ -86,10 +101,14 @@ export default function EditCardPage() {
         language: form.language,
         condition: form.condition,
         is_foil: !!form.is_foil,
-        is_japanese: !!form.is_japanese,
+        is_japanese: form.language === "JAP" ? true : !!form.is_japanese,
         purchase_price: form.purchase_price ?? null,
         purchase_date: form.purchase_date || null,
-        purchase_source: form.purchase_source || null,
+        purchase_source:
+          form.purchase_source && form.purchase_source !== SELECT_NONE
+            ? form.purchase_source
+            : null,
+        purchase_id: form.purchase_id || null,
         target_price: form.target_price ?? null,
         current_market_price: form.current_market_price ?? null,
         status: form.status,
@@ -204,7 +223,10 @@ export default function EditCardPage() {
                 <Label htmlFor="language">Lingua</Label>
                 <Select
                   value={form.language ?? "ITA"}
-                  onValueChange={(value) => update("language", value)}
+                  onValueChange={(value) => {
+                    update("language", value);
+                    if (value === "JAP") update("is_japanese", true);
+                  }}
                 >
                   <SelectTrigger id="language">
                     <SelectValue />
@@ -230,9 +252,9 @@ export default function EditCardPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {CARD_CONDITIONS.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
-                      </SelectItem>
+                    <SelectItem key={item} value={item}>
+                      {CARD_CONDITION_LABELS[item] ?? item}
+                    </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -250,7 +272,8 @@ export default function EditCardPage() {
               <div className="flex items-center gap-2 pt-6">
                 <Checkbox
                   id="is_japanese"
-                  checked={!!form.is_japanese}
+                  checked={form.language === "JAP" || !!form.is_japanese}
+                  disabled={form.language === "JAP"}
                   onCheckedChange={(value) =>
                     update("is_japanese", value === true)
                   }
@@ -288,16 +311,44 @@ export default function EditCardPage() {
               <div className="space-y-2">
                 <Label htmlFor="purchase_source">Fonte acquisto</Label>
                 <Select
-                  value={form.purchase_source ?? "altro"}
-                  onValueChange={(value) => update("purchase_source", value)}
+                  value={form.purchase_source ?? SELECT_NONE}
+                  onValueChange={(value) =>
+                    update("purchase_source", value === SELECT_NONE ? null : value)
+                  }
                 >
                   <SelectTrigger id="purchase_source">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={SELECT_NONE}>Non specificata</SelectItem>
                     {PURCHASE_SOURCES.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
                         {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="purchase_id">Lotto / acquisto collegato</Label>
+                <Select
+                  value={form.purchase_id ?? SELECT_NONE}
+                  onValueChange={(value) =>
+                    update("purchase_id", value === SELECT_NONE ? null : value)
+                  }
+                >
+                  <SelectTrigger id="purchase_id">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SELECT_NONE}>
+                      Nessuno (costo singolo)
+                    </SelectItem>
+                    {purchases.map((purchase) => (
+                      <SelectItem key={purchase.id} value={purchase.id}>
+                        {formatISODate(purchase.date)} · {purchase.source} · €
+                        {Number(purchase.total_amount).toFixed(2)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -345,16 +396,21 @@ export default function EditCardPage() {
                 <Select
                   value={form.status ?? "in_stock"}
                   onValueChange={(value) => update("status", value as CardRow["status"])}
+                  disabled={hasSale || form.status === "sold"}
                 >
                   <SelectTrigger id="status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CARD_STATUSES.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
+                    {hasSale || form.status === "sold" ? (
+                      <SelectItem value="sold">Venduta</SelectItem>
+                    ) : (
+                      CARD_STATUSES_EDITABLE.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

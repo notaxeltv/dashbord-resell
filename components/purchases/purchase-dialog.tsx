@@ -5,10 +5,18 @@ import { useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
 import { notify, formatNewPurchaseMessage } from "@/lib/notify";
+import { todayISO } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -19,11 +27,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { PURCHASE_SOURCES } from "@/lib/constants";
 import type { Purchase } from "@/lib/types";
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function PurchaseDialog({
   purchase,
@@ -39,7 +44,7 @@ export function PurchaseDialog({
   const [error, setError] = useState<string | null>(null);
 
   const [date, setDate] = useState(purchase?.date ?? todayISO());
-  const [source, setSource] = useState(purchase?.source ?? "");
+  const [source, setSource] = useState(purchase?.source ?? "cardmarket");
   const [totalAmount, setTotalAmount] = useState(
     purchase ? String(purchase.total_amount) : "",
   );
@@ -50,10 +55,11 @@ export function PurchaseDialog({
 
   function resetForm() {
     setDate(purchase?.date ?? todayISO());
-    setSource(purchase?.source ?? "");
+    setSource(purchase?.source ?? "cardmarket");
     setTotalAmount(purchase ? String(purchase.total_amount) : "");
     setShippingCost(purchase ? String(purchase.shipping_cost ?? 0) : "0");
     setNotes(purchase?.notes ?? "");
+    setError(null);
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -122,7 +128,13 @@ export function PurchaseDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) resetForm();
+      }}
+    >
       <DialogTrigger asChild>
         {isEdit ? (
           <Button variant="outline" size="sm" className={cn(triggerClassName)}>
@@ -161,13 +173,18 @@ export function PurchaseDialog({
 
           <div className="space-y-2">
             <Label htmlFor="p_source">Fonte *</Label>
-            <Input
-              id="p_source"
-              value={source}
-              onChange={(event) => setSource(event.target.value)}
-              placeholder="es. vinted, cardmarket, privato, lotto"
-              required
-            />
+            <Select value={source} onValueChange={setSource}>
+              <SelectTrigger id="p_source">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PURCHASE_SOURCES.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

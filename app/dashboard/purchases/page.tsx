@@ -18,6 +18,9 @@ import {
 import { PurchaseDialog } from "@/components/purchases/purchase-dialog";
 import { DeletePurchaseButton } from "@/components/purchases/delete-purchase-button";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { formatISODate } from "@/lib/dates";
+import { purchaseTotal } from "@/lib/finance";
+import { optionLabel, PURCHASE_SOURCES } from "@/lib/constants";
 import type { Purchase, Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -35,11 +38,7 @@ export default async function PurchasesPage() {
   );
   const list = (purchases ?? []) as Purchase[];
 
-  const totalSpent = list.reduce(
-    (sum, purchase) =>
-      sum + Number(purchase.total_amount) + Number(purchase.shipping_cost ?? 0),
-    0,
-  );
+  const totalSpent = list.reduce((sum, purchase) => sum + purchaseTotal(purchase), 0);
 
   return (
     <div className="space-y-8">
@@ -98,11 +97,11 @@ export default async function PurchasesPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-medium capitalize text-foreground">
-                          {purchase.source}
+                        <p className="font-medium text-foreground">
+                          {optionLabel(PURCHASE_SOURCES, purchase.source)}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(purchase.date).toLocaleDateString("it-IT")}
+                          {formatISODate(purchase.date)}
                         </p>
                       </div>
                       <p className="text-lg font-semibold text-foreground">
@@ -161,11 +160,9 @@ export default async function PurchasesPage() {
                     const author = profileMap.get(purchase.created_by);
                     return (
                       <TableRow key={purchase.id}>
+                        <TableCell>{formatISODate(purchase.date)}</TableCell>
                         <TableCell>
-                          {new Date(purchase.date).toLocaleDateString("it-IT")}
-                        </TableCell>
-                        <TableCell className="capitalize">
-                          {purchase.source}
+                          {optionLabel(PURCHASE_SOURCES, purchase.source)}
                         </TableCell>
                         <TableCell>
                           €{Number(purchase.total_amount).toFixed(2)}

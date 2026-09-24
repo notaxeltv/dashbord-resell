@@ -25,6 +25,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { todayISO } from "@/lib/dates";
 import type { Transaction } from "@/lib/types";
 
 export function TransactionDialog({
@@ -47,11 +48,14 @@ export function TransactionDialog({
     transaction ? String(transaction.amount) : "",
   );
   const [description, setDescription] = useState(transaction?.description ?? "");
+  const [date, setDate] = useState(transaction?.date ?? todayISO());
 
   function resetForm() {
     setType(transaction?.type ?? "expense");
     setAmount(transaction ? String(transaction.amount) : "");
     setDescription(transaction?.description ?? "");
+    setDate(transaction?.date ?? todayISO());
+    setError(null);
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -66,6 +70,7 @@ export function TransactionDialog({
           type,
           amount: Number(amount || 0),
           description: description || null,
+          date,
         })
         .eq("id", transaction.id);
 
@@ -92,6 +97,7 @@ export function TransactionDialog({
       type,
       amount: Number(amount || 0),
       description: description || null,
+      date,
       created_by: userData.user.id,
     });
 
@@ -108,7 +114,13 @@ export function TransactionDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) resetForm();
+      }}
+    >
       <DialogTrigger asChild>
         {isEdit ? (
           <Button variant="outline" size="sm" className={cn(triggerClassName)}>
@@ -147,6 +159,17 @@ export function TransactionDialog({
                 <SelectItem value="income">Entrata</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="t_date">Data *</Label>
+            <Input
+              id="t_date"
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+            />
           </div>
 
           <div className="space-y-2">

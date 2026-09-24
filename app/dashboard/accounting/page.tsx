@@ -29,7 +29,9 @@ import { TransactionDialog } from "@/components/accounting/transaction-dialog";
 import { DeleteTransactionButton } from "@/components/accounting/delete-transaction-button";
 import { TaxEstimator } from "@/components/accounting/tax-estimator";
 import { cn } from "@/lib/utils";
-import type { Profile, Purchase, Sale, Transaction } from "@/lib/types";
+import { formatISODate, yearFromISODate, monthFromISODate } from "@/lib/dates";
+import { isUnlinkedCardCost, purchaseTotal, transactionDate } from "@/lib/finance";
+import type { Card as CardRow, Profile, Purchase, Sale, Transaction } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -62,39 +64,52 @@ export default async function AccountingPage({
     { data: purchases, error: purchasesError },
     { data: sales, error: salesError },
     { data: transactions, error: transactionsError },
+    { data: cards, error: cardsError },
     { data: profiles },
   ] = await Promise.all([
     supabase.from("purchases").select("*"),
     supabase.from("sales").select("*"),
-    supabase.from("transactions").select("*").order("created_at", { ascending: false }),
+    supabase.from("transactions").select("*").order("date", { ascending: false }),
+    supabase.from("cards").select("id, purchase_id, purchase_price, purchase_date"),
     supabase.from("profiles").select("id, email, display_name, role, created_at"),
   ]);
 
   const purchaseList = (purchases ?? []) as Purchase[];
   const saleList = (sales ?? []) as Sale[];
   const transactionList = (transactions ?? []) as Transaction[];
+  const cardList = (cards ?? []) as Pick<
+    CardRow,
+    "id" | "purchase_id" | "purchase_price" | "purchase_date"
+  >[];
   const profileMap = new Map(
     (profiles ?? []).map((profile: Profile) => [profile.id, profile]),
   );
 
   const yearsWithData = new Set<number>([currentYear]);
-  purchaseList.forEach((p) => yearsWithData.add(new Date(p.date).getFullYear()));
-  saleList.forEach((s) => yearsWithData.add(new Date(s.sale_date).getFullYear()));
-  transactionList.forEach((t) =>
-    yearsWithData.add(new Date(t.created_at).getFullYear()),
-  );
+  purchaseList.forEach((p) => yearsWithData.add(yearFromISODate(p.date)));
+  saleList.forEach((s) => yearsWithData.add(yearFromISODate(s.sale_date)));
+  transactionList.forEach((t) => yearsWithData.add(yearFromISODate(transactionDate(t))));
+  cardList.forEach((c) => {
+    if (c.purchase_date) yearsWithData.add(yearFromISODate(c.purchase_date));
+  });
   const years = Array.from(yearsWithData).sort((a, b) => b - a);
 
   const selectedYear = Number(params.year) || currentYear;
 
   const yearPurchases = purchaseList.filter(
-    (p) => new Date(p.date).getFullYear() === selectedYear,
+    (p) => yearFromISODate(p.date) === selectedYear,
   );
   const yearSales = saleList.filter(
-    (s) => new Date(s.sale_date).getFullYear() === selectedYear,
+    (s) => yearFromISODate(s.sale_date) === selectedYear,
   );
   const yearTransactions = transactionList.filter(
-    (t) => new Date(t.created_at).getFullYear() === selectedYear,
+    (t) => yearFromISODate(transactionDate(t)) === selectedYear,
+  );
+  const yearUnlinkedCards = cardList.filter(
+    (c) =>
+      isUnlinkedCardCost(c) &&
+      c.purchase_date &&
+      yearFromISODate(c.purchase_date) === selectedYear,
   );
 
   const revenueFromSales = yearSales.reduce(
@@ -102,7 +117,11 @@ export default async function AccountingPage({
     0,
   );
   const costFromPurchases = yearPurchases.reduce(
-    (sum, p) => sum + Number(p.total_amount) + Number(p.shipping_cost ?? 0),
+    (sum, p) => sum + purchaseTotal(p),
+    0,
+  );
+  const costFromUnlinkedCards = yearUnlinkedCards.reduce(
+    (sum, c) => sum + Number(c.purchase_price ?? 0),
     0,
   );
   const extraIncome = yearTransactions
@@ -113,18 +132,21 @@ export default async function AccountingPage({
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
   const totalRevenue = revenueFromSales + extraIncome;
-  const totalCosts = costFromPurchases + extraExpense;
+  const totalCosts = costFromPurchases + costFromUnlinkedCards + extraExpense;
   const netProfit = totalRevenue - totalCosts;
 
   const monthlyBreakdown = MONTH_LABELS.map((label, month) => {
     const monthSales = yearSales.filter(
-      (s) => new Date(s.sale_date).getMonth() === month,
+      (s) => monthFromISODate(s.sale_date) === month,
     );
     const monthPurchases = yearPurchases.filter(
-      (p) => new Date(p.date).getMonth() === month,
+      (p) => monthFromISODate(p.date) === month,
     );
     const monthTransactions = yearTransactions.filter(
-      (t) => new Date(t.created_at).getMonth() === month,
+      (t) => monthFromISODate(transactionDate(t)) === month,
+    );
+    const monthUnlinked = yearUnlinkedCards.filter(
+      (c) => c.purchase_date && monthFromISODate(c.purchase_date) === month,
     );
     const revenue =
       monthSales.reduce((sum, s) => sum + Number(s.net_amount ?? 0), 0) +
@@ -132,17 +154,15 @@ export default async function AccountingPage({
         .filter((t) => t.type === "income")
         .reduce((sum, t) => sum + Number(t.amount), 0);
     const costs =
-      monthPurchases.reduce(
-        (sum, p) => sum + Number(p.total_amount) + Number(p.shipping_cost ?? 0),
-        0,
-      ) +
+      monthPurchases.reduce((sum, p) => sum + purchaseTotal(p), 0) +
+      monthUnlinked.reduce((sum, c) => sum + Number(c.purchase_price ?? 0), 0) +
       monthTransactions
         .filter((t) => t.type === "expense")
         .reduce((sum, t) => sum + Number(t.amount), 0);
     return { label, revenue, costs, profit: revenue - costs };
   });
 
-  const error = purchasesError || salesError || transactionsError;
+  const error = purchasesError || salesError || transactionsError || cardsError;
 
   return (
     <div className="space-y-8">
@@ -179,7 +199,7 @@ export default async function AccountingPage({
           value={`€${totalCosts.toFixed(2)}`}
           accent="gold"
           icon={TrendingDown}
-          hint="Acquisti carte + spese extra"
+          hint="Acquisti, carte non in lotti e spese extra"
         />
         <KpiCard
           label="Utile netto"
@@ -299,7 +319,7 @@ export default async function AccountingPage({
                           {transaction.type === "income" ? "Entrata" : "Spesa"}
                         </Badge>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          {new Date(transaction.created_at).toLocaleDateString("it-IT")}
+                          {formatISODate(transactionDate(transaction))}
                         </p>
                       </div>
                       <p
@@ -355,7 +375,7 @@ export default async function AccountingPage({
                     return (
                       <TableRow key={transaction.id}>
                         <TableCell>
-                          {new Date(transaction.created_at).toLocaleDateString("it-IT")}
+                          {formatISODate(transactionDate(transaction))}
                         </TableCell>
                         <TableCell>
                           <Badge variant={transaction.type === "income" ? "success" : "warning"}>

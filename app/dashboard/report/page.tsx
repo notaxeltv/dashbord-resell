@@ -14,13 +14,11 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { PeriodFilter } from "@/components/reports/period-filter";
 import { SpendingChart } from "@/components/reports/spending-chart";
 import { cn } from "@/lib/utils";
-import type { Purchase, Sale } from "@/lib/types";
+import { formatISODate, toISODate } from "@/lib/dates";
+import { isUnlinkedCardCost, purchaseTotal, transactionDate } from "@/lib/finance";
+import type { Card as CardRow, Purchase, Sale, Transaction } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-
-function toISODate(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
 
 function startOfWeek(date: Date) {
   const d = new Date(date);
@@ -136,29 +134,79 @@ export default async function ReportPage({
   const [
     { data: purchases, error: purchasesError },
     { data: sales, error: salesError },
+    { data: transactions, error: transactionsError },
+    { data: cards, error: cardsError },
   ] = await Promise.all([
     supabase.from("purchases").select("*").gte("date", start).lte("date", end),
     supabase.from("sales").select("*").gte("sale_date", start).lte("sale_date", end),
+    supabase.from("transactions").select("*"),
+    supabase
+      .from("cards")
+      .select("id, name, purchase_id, purchase_price, purchase_date")
+      .not("purchase_price", "is", null)
+      .is("purchase_id", null)
+      .gte("purchase_date", start)
+      .lte("purchase_date", end),
   ]);
 
   const purchaseList = (purchases ?? []) as Purchase[];
   const saleList = (sales ?? []) as Sale[];
+  const transactionList = ((transactions ?? []) as Transaction[]).filter((t) => {
+    const date = transactionDate(t);
+    return date >= start && date <= end;
+  });
+  const unlinkedCards = ((cards ?? []) as Pick<
+    CardRow,
+    "id" | "name" | "purchase_id" | "purchase_price" | "purchase_date"
+  >[]).filter(isUnlinkedCardCost);
 
-  const totalSpent = purchaseList.reduce(
-    (sum, p) => sum + Number(p.total_amount) + Number(p.shipping_cost ?? 0),
-    0,
-  );
-  const totalRevenue = saleList.reduce((sum, s) => sum + Number(s.net_amount ?? 0), 0);
+  const totalSpent =
+    purchaseList.reduce((sum, p) => sum + purchaseTotal(p), 0) +
+    unlinkedCards.reduce((sum, c) => sum + Number(c.purchase_price ?? 0), 0) +
+    transactionList
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalRevenue =
+    saleList.reduce((sum, s) => sum + Number(s.net_amount ?? 0), 0) +
+    transactionList
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
   const netMargin = totalRevenue - totalSpent;
 
   const buckets = buildBuckets(start, end);
   const chartData = buckets.map((bucket) => {
-    const bucketPurchases = purchaseList
-      .filter((p) => p.date >= bucket.start && p.date <= bucket.end)
-      .reduce((sum, p) => sum + Number(p.total_amount) + Number(p.shipping_cost ?? 0), 0);
-    const bucketSales = saleList
-      .filter((s) => s.sale_date >= bucket.start && s.sale_date <= bucket.end)
-      .reduce((sum, s) => sum + Number(s.net_amount ?? 0), 0);
+    const bucketPurchases =
+      purchaseList
+        .filter((p) => p.date >= bucket.start && p.date <= bucket.end)
+        .reduce((sum, p) => sum + purchaseTotal(p), 0) +
+      unlinkedCards
+        .filter(
+          (c) =>
+            c.purchase_date &&
+            c.purchase_date >= bucket.start &&
+            c.purchase_date <= bucket.end,
+        )
+        .reduce((sum, c) => sum + Number(c.purchase_price ?? 0), 0) +
+      transactionList
+        .filter(
+          (t) =>
+            t.type === "expense" &&
+            transactionDate(t) >= bucket.start &&
+            transactionDate(t) <= bucket.end,
+        )
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+    const bucketSales =
+      saleList
+        .filter((s) => s.sale_date >= bucket.start && s.sale_date <= bucket.end)
+        .reduce((sum, s) => sum + Number(s.net_amount ?? 0), 0) +
+      transactionList
+        .filter(
+          (t) =>
+            t.type === "income" &&
+            transactionDate(t) >= bucket.start &&
+            transactionDate(t) <= bucket.end,
+        )
+        .reduce((sum, t) => sum + Number(t.amount), 0);
     return { label: bucket.label, purchases: bucketPurchases, sales: bucketSales };
   });
 
@@ -167,13 +215,27 @@ export default async function ReportPage({
       type: "purchase" as const,
       date: p.date,
       label: `Acquisto — ${p.source}`,
-      amount: -(Number(p.total_amount) + Number(p.shipping_cost ?? 0)),
+      amount: -purchaseTotal(p),
+    })),
+    ...unlinkedCards.map((c) => ({
+      type: "card_cost" as const,
+      date: c.purchase_date as string,
+      label: `Costo carta — ${c.name}`,
+      amount: -Number(c.purchase_price ?? 0),
     })),
     ...saleList.map((s) => ({
       type: "sale" as const,
       date: s.sale_date,
       label: `Vendita — ${s.marketplace}`,
       amount: Number(s.net_amount ?? 0),
+    })),
+    ...transactionList.map((t) => ({
+      type: "extra" as const,
+      date: transactionDate(t),
+      label: `${t.type === "income" ? "Entrata extra" : "Spesa extra"}${
+        t.description ? ` — ${t.description}` : ""
+      }`,
+      amount: t.type === "income" ? Number(t.amount) : -Number(t.amount),
     })),
   ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
@@ -197,7 +259,7 @@ export default async function ReportPage({
         </CardContent>
       </Card>
 
-      {(purchasesError || salesError) && (
+      {(purchasesError || salesError || transactionsError || cardsError) && (
         <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
           Errore nel caricamento dei dati del resoconto.
         </p>
@@ -224,7 +286,12 @@ export default async function ReportPage({
         />
         <KpiCard
           label="Transazioni"
-          value={purchaseList.length + saleList.length}
+          value={
+            purchaseList.length +
+            saleList.length +
+            transactionList.length +
+            unlinkedCards.length
+          }
           accent="violet"
           icon={ArrowLeftRight}
         />
@@ -263,7 +330,7 @@ export default async function ReportPage({
                 )}
                 {combinedRows.map((row, index) => (
                   <TableRow key={`${row.type}-${index}`}>
-                    <TableCell>{new Date(row.date).toLocaleDateString("it-IT")}</TableCell>
+                    <TableCell>{formatISODate(row.date)}</TableCell>
                     <TableCell>{row.label}</TableCell>
                     <TableCell
                       className={cn(

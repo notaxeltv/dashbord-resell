@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
 export const runtime = "nodejs";
 
 /**
@@ -25,7 +27,6 @@ async function sendTelegram(message: string) {
       body: JSON.stringify({
         chat_id: chatId,
         text: message,
-        parse_mode: "Markdown",
       }),
     },
   );
@@ -74,6 +75,15 @@ async function sendWhatsapp(message: string) {
 }
 
 export async function POST(request: Request) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autenticato." }, { status: 401 });
+  }
+
   let message: unknown;
 
   try {

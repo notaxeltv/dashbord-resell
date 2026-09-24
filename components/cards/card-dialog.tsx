@@ -6,6 +6,7 @@ import { ImageOff, RefreshCw } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
 import { notify, formatCardStatusChangeMessage } from "@/lib/notify";
+import { cardImageSrc } from "@/lib/card-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,26 +30,28 @@ import {
 } from "@/components/ui/dialog";
 import {
   CARD_CONDITIONS,
+  CARD_CONDITION_LABELS,
   CARD_LANGUAGES,
-  CARD_STATUSES,
+  CARD_STATUSES_EDITABLE,
   PURCHASE_SOURCES,
+  SELECT_NONE,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import type { Card as CardRow } from "@/lib/types";
+import { formatISODate } from "@/lib/dates";
+import type { Card as CardRow, PurchaseOption } from "@/lib/types";
 
-/**
- * Popup unico per visualizzare, modificare ed eliminare una carta esistente.
- * Il `trigger` (il riquadro mobile o la riga della tabella desktop) apre il
- * popup al click, evitando di dover navigare su una pagina separata.
- */
 export function CardDialog({
   card,
   trigger,
   triggerClassName,
+  purchases = [],
+  hasSale = false,
 }: {
   card: CardRow;
   trigger: ReactNode;
   triggerClassName?: string;
+  purchases?: PurchaseOption[];
+  hasSale?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -56,6 +59,7 @@ export function CardDialog({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState(card.image_url);
+  const [imageHint, setImageHint] = useState<string | null>(null);
   const [searchingImage, setSearchingImage] = useState(false);
 
   const [form, setForm] = useState<CardRow>(card);
@@ -68,24 +72,34 @@ export function CardDialog({
     setForm(card);
     setImageUrl(card.image_url);
     setError(null);
+    setImageHint(null);
   }
 
   async function searchImage() {
     if (!form.name?.trim()) return;
     setSearchingImage(true);
+    setImageHint(null);
     try {
       const response = await fetch(`/api/cards/${card.id}/image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, setName: form.set_name }),
+        body: JSON.stringify({
+          name: form.name,
+          setName: form.set_name,
+          setCode: form.set_code,
+          number: form.number,
+          isJapanese: form.is_japanese,
+        }),
       });
       const data = await response.json();
       if (data?.imageUrl) {
         setImageUrl(data.imageUrl);
         router.refresh();
+      } else if (data?.message) {
+        setImageHint(data.message);
       }
     } catch {
-      // Ricerca immagine "best effort": nessun errore bloccante da mostrare.
+      setImageHint("Ricerca immagine non riuscita.");
     } finally {
       setSearchingImage(false);
     }
@@ -117,10 +131,14 @@ export function CardDialog({
         language: form.language,
         condition: form.condition,
         is_foil: !!form.is_foil,
-        is_japanese: !!form.is_japanese,
+        is_japanese: form.language === "JAP" ? true : !!form.is_japanese,
         purchase_price: form.purchase_price ?? null,
         purchase_date: form.purchase_date || null,
-        purchase_source: form.purchase_source || null,
+        purchase_source:
+          form.purchase_source && form.purchase_source !== SELECT_NONE
+            ? form.purchase_source
+            : null,
+        purchase_id: form.purchase_id || null,
         target_price: form.target_price ?? null,
         current_market_price: form.current_market_price ?? null,
         status: form.status,
@@ -163,13 +181,21 @@ export function CardDialog({
     setDeleting(false);
 
     if (deleteError) {
-      setError(deleteError.message);
+      setError(
+        deleteError.message.includes("sales_card_id_fkey") ||
+          deleteError.code === "23503"
+          ? "Non puoi eliminare questa carta perché ha una vendita collegata. Elimina prima la vendita."
+          : deleteError.message,
+      );
       return;
     }
 
     setOpen(false);
     router.refresh();
   }
+
+  const displayImage = cardImageSrc(imageUrl);
+  const soldLocked = hasSale || card.status === "sold";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -208,10 +234,10 @@ export function CardDialog({
 
           <div className="flex items-center gap-4">
             <div className="flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted">
-              {imageUrl ? (
+              {displayImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={imageUrl}
+                  src={displayImage}
                   alt={form.name}
                   className="h-full w-full object-cover"
                 />
@@ -221,8 +247,7 @@ export function CardDialog({
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">
-                Immagine recuperata automaticamente da CardTrader in base a
-                nome e set.
+                Immagine recuperata da CardTrader in base a nome, set e numero.
               </p>
               <Button
                 type="button"
@@ -236,6 +261,9 @@ export function CardDialog({
                 />
                 {searchingImage ? "Ricerca..." : "Cerca immagine"}
               </Button>
+              {imageHint && (
+                <p className="text-xs text-amber-700">{imageHint}</p>
+              )}
             </div>
           </div>
 
@@ -281,7 +309,10 @@ export function CardDialog({
               <Label htmlFor="cd_language">Lingua</Label>
               <Select
                 value={form.language ?? "ITA"}
-                onValueChange={(value) => update("language", value)}
+                onValueChange={(value) => {
+                  update("language", value);
+                  if (value === "JAP") update("is_japanese", true);
+                }}
               >
                 <SelectTrigger id="cd_language">
                   <SelectValue />
@@ -308,7 +339,7 @@ export function CardDialog({
                 <SelectContent>
                   {CARD_CONDITIONS.map((item) => (
                     <SelectItem key={item} value={item}>
-                      {item}
+                      {CARD_CONDITION_LABELS[item] ?? item}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -327,7 +358,8 @@ export function CardDialog({
             <div className="flex items-center gap-2 pt-6">
               <Checkbox
                 id="cd_is_japanese"
-                checked={!!form.is_japanese}
+                checked={form.language === "JAP" || !!form.is_japanese}
+                disabled={form.language === "JAP"}
                 onCheckedChange={(value) =>
                   update("is_japanese", value === true)
                 }
@@ -365,13 +397,16 @@ export function CardDialog({
             <div className="space-y-2">
               <Label htmlFor="cd_purchase_source">Fonte acquisto</Label>
               <Select
-                value={form.purchase_source ?? "altro"}
-                onValueChange={(value) => update("purchase_source", value)}
+                value={form.purchase_source ?? SELECT_NONE}
+                onValueChange={(value) =>
+                  update("purchase_source", value === SELECT_NONE ? null : value)
+                }
               >
                 <SelectTrigger id="cd_purchase_source">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={SELECT_NONE}>Non specificata</SelectItem>
                   {PURCHASE_SOURCES.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       {item.label}
@@ -379,6 +414,35 @@ export function CardDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cd_purchase_id">Lotto / acquisto collegato</Label>
+              <Select
+                value={form.purchase_id ?? SELECT_NONE}
+                onValueChange={(value) =>
+                  update("purchase_id", value === SELECT_NONE ? null : value)
+                }
+              >
+                <SelectTrigger id="cd_purchase_id">
+                  <SelectValue placeholder="Nessuno (costo singolo)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_NONE}>
+                    Nessuno (costo singolo)
+                  </SelectItem>
+                  {purchases.map((purchase) => (
+                    <SelectItem key={purchase.id} value={purchase.id}>
+                      {formatISODate(purchase.date)} · {purchase.source} · €
+                      {Number(purchase.total_amount).toFixed(2)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Collega la carta a un lotto così il costo non viene contato due
+                volte in contabilità.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -422,18 +486,28 @@ export function CardDialog({
               <Select
                 value={form.status ?? "in_stock"}
                 onValueChange={(value) => update("status", value as CardRow["status"])}
+                disabled={soldLocked}
               >
                 <SelectTrigger id="cd_status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CARD_STATUSES.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
+                  {soldLocked ? (
+                    <SelectItem value="sold">Venduta</SelectItem>
+                  ) : (
+                    CARD_STATUSES_EDITABLE.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
+              {soldLocked && (
+                <p className="text-xs text-muted-foreground">
+                  Lo stato venduta si gestisce dalla pagina Vendite.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2 sm:col-span-2">

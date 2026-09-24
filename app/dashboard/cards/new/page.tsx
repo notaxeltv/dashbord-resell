@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
@@ -26,10 +26,14 @@ import {
 } from "@/components/ui/card";
 import {
   CARD_CONDITIONS,
+  CARD_CONDITION_LABELS,
   CARD_LANGUAGES,
-  CARD_STATUSES,
+  CARD_STATUSES_EDITABLE,
   PURCHASE_SOURCES,
+  SELECT_NONE,
 } from "@/lib/constants";
+import { formatISODate } from "@/lib/dates";
+import type { PurchaseOption } from "@/lib/types";
 
 export default function NewCardPage() {
   const router = useRouter();
@@ -46,10 +50,23 @@ export default function NewCardPage() {
   const [isJapanese, setIsJapanese] = useState(false);
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
-  const [purchaseSource, setPurchaseSource] = useState("cardmarket");
+  const [purchaseSource, setPurchaseSource] = useState(SELECT_NONE);
+  const [purchaseId, setPurchaseId] = useState(SELECT_NONE);
   const [targetPrice, setTargetPrice] = useState("");
+  const [marketPrice, setMarketPrice] = useState("");
   const [status, setStatus] = useState("in_stock");
   const [notes, setNotes] = useState("");
+  const [purchases, setPurchases] = useState<PurchaseOption[]>([]);
+
+  useEffect(() => {
+    void supabase
+      .from("purchases")
+      .select("id, date, source, total_amount")
+      .order("date", { ascending: false })
+      .then(({ data }) => {
+        setPurchases((data ?? []) as PurchaseOption[]);
+      });
+  }, []);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -64,7 +81,9 @@ export default function NewCardPage() {
       return;
     }
 
-    const { error: insertError } = await supabase.from("cards").insert({
+    const { data: inserted, error: insertError } = await supabase
+      .from("cards")
+      .insert({
       name,
       set_name: setName_ || null,
       set_code: setCode || null,
@@ -72,15 +91,20 @@ export default function NewCardPage() {
       language,
       condition,
       is_foil: isFoil,
-      is_japanese: isJapanese,
+      is_japanese: language === "JAP" ? true : isJapanese,
       purchase_price: purchasePrice ? Number(purchasePrice) : null,
       purchase_date: purchaseDate || null,
-      purchase_source: purchaseSource || null,
+      purchase_source:
+        purchaseSource && purchaseSource !== SELECT_NONE ? purchaseSource : null,
+      purchase_id: purchaseId !== SELECT_NONE ? purchaseId : null,
       target_price: targetPrice ? Number(targetPrice) : null,
+      current_market_price: marketPrice ? Number(marketPrice) : null,
       status,
       notes: notes || null,
       owner_id: userData.user.id,
-    });
+    })
+      .select("id")
+      .single();
 
     if (insertError) {
       setError(insertError.message);
@@ -96,6 +120,20 @@ export default function NewCardPage() {
         purchasePrice: purchasePrice ? Number(purchasePrice) : null,
       }),
     );
+
+    if (inserted?.id && (setName_ || setCode)) {
+      await fetch(`/api/cards/${inserted.id}/image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          setName: setName_,
+          setCode,
+          number,
+          isJapanese: language === "JAP" ? true : isJapanese,
+        }),
+      });
+    }
 
     router.push("/dashboard");
     router.refresh();
@@ -169,7 +207,13 @@ export default function NewCardPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="language">Lingua</Label>
-                <Select value={language} onValueChange={setLanguage}>
+                <Select
+                  value={language}
+                  onValueChange={(value) => {
+                    setLanguage(value);
+                    if (value === "JAP") setIsJapanese(true);
+                  }}
+                >
                   <SelectTrigger id="language">
                     <SelectValue />
                   </SelectTrigger>
@@ -191,9 +235,9 @@ export default function NewCardPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {CARD_CONDITIONS.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
-                      </SelectItem>
+                    <SelectItem key={item} value={item}>
+                      {CARD_CONDITION_LABELS[item] ?? item}
+                    </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -211,7 +255,8 @@ export default function NewCardPage() {
               <div className="flex items-center gap-2 pt-6">
                 <Checkbox
                   id="is_japanese"
-                  checked={isJapanese}
+                  checked={language === "JAP" || isJapanese}
+                  disabled={language === "JAP"}
                   onCheckedChange={(value) => setIsJapanese(value === true)}
                 />
                 <Label htmlFor="is_japanese">Edizione giapponese</Label>
@@ -246,9 +291,30 @@ export default function NewCardPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={SELECT_NONE}>Non specificata</SelectItem>
                     {PURCHASE_SOURCES.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
                         {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="purchase_id">Lotto / acquisto collegato</Label>
+                <Select value={purchaseId} onValueChange={setPurchaseId}>
+                  <SelectTrigger id="purchase_id">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SELECT_NONE}>
+                      Nessuno (costo singolo)
+                    </SelectItem>
+                    {purchases.map((purchase) => (
+                      <SelectItem key={purchase.id} value={purchase.id}>
+                        {formatISODate(purchase.date)} · {purchase.source} · €
+                        {Number(purchase.total_amount).toFixed(2)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -268,13 +334,25 @@ export default function NewCardPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="market_price">Prezzo mercato attuale (€)</Label>
+                <Input
+                  id="market_price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={marketPrice}
+                  onChange={(event) => setMarketPrice(event.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="status">Stato</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger id="status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CARD_STATUSES.map((item) => (
+                    {CARD_STATUSES_EDITABLE.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
                         {item.label}
                       </SelectItem>

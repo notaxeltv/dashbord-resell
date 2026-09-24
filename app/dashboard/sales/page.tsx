@@ -18,6 +18,8 @@ import {
 import { SaleDialog, type CardOption } from "@/components/sales/sale-dialog";
 import { DeleteSaleButton } from "@/components/sales/delete-sale-button";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { formatISODate } from "@/lib/dates";
+import { optionLabel, MARKETPLACES } from "@/lib/constants";
 import type { Sale, Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -40,8 +42,9 @@ export default async function SalesPage() {
   );
   const list = (sales ?? []) as Sale[];
 
+  const soldIds = new Set(list.map((sale) => sale.card_id));
   const availableCards = (cards ?? []).filter(
-    (card) => card.status !== "sold",
+    (card) => card.status !== "sold" && !soldIds.has(card.id as string),
   ) as CardOption[];
 
   const totalRevenue = list.reduce(
@@ -113,9 +116,9 @@ export default async function SalesPage() {
                         <p className="font-medium text-foreground">
                           {card?.name ?? "Carta eliminata"}
                         </p>
-                        <p className="text-sm capitalize text-muted-foreground">
-                          {sale.marketplace} ·{" "}
-                          {new Date(sale.sale_date).toLocaleDateString("it-IT")}
+                        <p className="text-sm text-muted-foreground">
+                          {optionLabel(MARKETPLACES, sale.marketplace)} ·{" "}
+                          {formatISODate(sale.sale_date)}
                         </p>
                       </div>
                       <p className="text-lg font-semibold text-foreground">
@@ -181,12 +184,10 @@ export default async function SalesPage() {
                     const author = profileMap.get(sale.sold_by);
                     return (
                       <TableRow key={sale.id}>
-                        <TableCell>
-                          {new Date(sale.sale_date).toLocaleDateString("it-IT")}
-                        </TableCell>
+                        <TableCell>{formatISODate(sale.sale_date)}</TableCell>
                         <TableCell>{card?.name ?? "Carta eliminata"}</TableCell>
-                        <TableCell className="capitalize">
-                          {sale.marketplace}
+                        <TableCell>
+                          {optionLabel(MARKETPLACES, sale.marketplace)}
                         </TableCell>
                         <TableCell>
                           €{Number(sale.sale_price).toFixed(2)}

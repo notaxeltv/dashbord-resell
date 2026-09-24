@@ -27,6 +27,7 @@ export interface Card {
   status: CardStatus;
   notes: string | null;
   image_url: string | null;
+  purchase_id: string | null;
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -65,9 +66,17 @@ export interface Transaction {
   type: TransactionType;
   amount: number;
   description: string | null;
+  date: string;
   related_card_id: string | null;
   related_purchase_id: string | null;
   related_sale_id: string | null;
   created_by: string;
   created_at: string;
+}
+
+export interface PurchaseOption {
+  id: string;
+  date: string;
+  source: string;
+  total_amount: number;
 }

@@ -167,17 +167,20 @@ persone (es. tu e un socio) con dati condivisi.
   prezzo, spedizione, fee, data, acquirente o note. La carta collegata non è
   modificabile da qui (per cambiarla, elimina la vendita e creane una nuova),
   così da evitare incongruenze sullo stato delle carte.
-- Eliminazione riga con conferma (non ripristina automaticamente lo stato
-  della carta collegata: se necessario, modificala manualmente da
-  `/dashboard`).
+- Eliminazione riga con conferma: lo stato della carta collegata torna
+  automaticamente a **In stock**. Non è possibile marcare una carta come
+  venduta dall'inventario: va registrata una vendita. Ogni carta può avere
+  al massimo una vendita. Non puoi eliminare una carta che ha ancora una
+  vendita collegata (lo storico contabile viene preservato).
 
 ### Resoconto (`/dashboard/report`)
 
 - Filtri periodo: **Settimana**, **Mese**, **Anno** o **Personalizzato**
   (con selettori data "Dal"/"Al"), gestiti via query string (`?period=...`)
   così l'URL resta condivisibile/bookmarkabile.
-- KPI di periodo: totale acquistato, totale venduto (netto), margine netto,
-  numero di transazioni.
+- KPI di periodo: totale acquistato (lotti + costi carte non collegate a
+  un lotto + spese extra), totale venduto (netto + entrate extra), margine
+  netto, numero di transazioni.
 - Grafico a barre (CSS puro, nessuna dipendenza esterna) che confronta
   acquisti e vendite nel tempo, con granularità automatica in base alla
   durata del periodo (giorno se ≤31 giorni, mese se più lungo, anno per
@@ -258,9 +261,10 @@ per la configurazione.
    "Allow new users to sign up" se vuoi impedire registrazioni pubbliche
    dirette (gli utenti verranno comunque creati tramite invito, vedi sotto).
 
-> **Hai già un progetto Supabase creato prima dell'introduzione della
-> colonna `image_url`?** Esegui questa singola istruzione nel SQL Editor
-> per aggiungerla senza dover rieseguire tutto lo script (è idempotente):
+> **Hai già un progetto Supabase?** Rilancia tutto `schema.sql` (è
+> idempotente). Aggiunge `cards.purchase_id`, `transactions.date`, i
+> trigger che allineano lo stato venduta e il vincolo che impedisce di
+> cancellare una carta con vendite collegate. Poi:
 >
 > ```sql
 > alter table public.cards add column if not exists image_url text;
@@ -381,18 +385,19 @@ Twilio (a pagamento, richiede approvazione).
 
 ### Verifica rapida
 
-Con il server avviato (`npm run dev`) puoi testare la Route Handler
-direttamente, senza passare dalla UI:
+Con il server avviato (`npm run dev`) e dopo aver effettuato il login
+nel browser, puoi testare la Route Handler (richiede sessione):
 
 ```bash
 curl -X POST http://localhost:3000/api/notify \
   -H "Content-Type: application/json" \
-  -d '{"message":"Test notifica 🃏"}'
+  --cookie "sb-access-token=...; sb-refresh-token=..." \
+  -d '{"message":"Test notifica"}'
 ```
 
-La risposta indica per ciascun canale se il messaggio è stato inviato
-(`sent`), saltato perché non configurato (`skipped`) o se c'è stato un
-errore (es. token non valido).
+Senza login la route risponde `401`. In alternativa aggiungi una carta
+o una vendita dall'app: se Telegram/Twilio sono configurati, partirà
+la notifica.
 
 ## Configurazione immagini carte (CardTrader)
 
@@ -422,9 +427,10 @@ funziona normalmente e mostra solo un placeholder al posto dell'immagine.
    - Se hai già condiviso questo token altrove, valuta di **rigenerarlo**
      dal pannello CardTrader appena possibile, così il token precedente
      smette di funzionare.
-4. La ricerca dell'immagine richiede sia un **nome carta** che un **set**
-   compilati sulla carta: senza set, la ricerca viene saltata (altrimenti
-   bisognerebbe scandire centinaia di espansioni ad ogni richiesta).
+4. La ricerca dell'immagine richiede **nome** e **set** (nome set o codice
+   set). Usa l'endpoint ufficiale `GET /blueprints/export`. Le immagini
+   CardTrader vengono mostrate tramite un proxy autenticato
+   (`/api/images/proxy`), così non dipendono dal hotlink del CDN.
 5. Se in futuro vuoi disabilitare la funzionalità, basta rimuovere la
    variabile d'ambiente: l'app continuerà a funzionare mostrando solo il
    placeholder al posto delle immagini.
@@ -496,9 +502,8 @@ sicuro al collaboratore.
   è una scelta adatta a un piccolo team che condivide lo stesso inventario.
 - Non è implementata alcuna integrazione di pagamento (niente Stripe) né
   funzionalità avanzate non richieste dalle specifiche.
-- L'eliminazione di una vendita non ripristina automaticamente lo stato
-  della carta collegata (rimane `sold`): se necessario, aggiornalo
-  manualmente modificando la carta.
+- L'eliminazione di una vendita ripristina automaticamente lo stato della
+  carta collegata a `in_stock`.
 - I campi numerici (prezzi) sono gestiti come `numeric(10,2)` per evitare
   problemi di arrotondamento tipici dei float.
 - Le notifiche Telegram/WhatsApp vengono inviate dal client subito dopo

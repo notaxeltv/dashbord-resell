@@ -29,7 +29,7 @@ export function formatNewCardMessage(params: {
   purchasePrice?: number | null;
 }) {
   const lines = [
-    "🃏 *Nuova carta aggiunta*",
+    "🃏 Nuova carta aggiunta",
     `${params.name}${params.setName ? ` (${params.setName})` : ""}`,
     `Stato: ${statusLabel(params.status)}`,
   ];
@@ -47,7 +47,7 @@ export function formatCardStatusChangeMessage(params: {
   newStatus: string;
 }) {
   return [
-    "🔄 *Aggiornamento stato carta*",
+    "🔄 Aggiornamento stato carta",
     params.name,
     `${statusLabel(params.oldStatus)} → ${statusLabel(params.newStatus)}`,
   ].join("\n");
@@ -59,7 +59,7 @@ export function formatNewPurchaseMessage(params: {
   shippingCost: number;
 }) {
   const lines = [
-    "🛒 *Nuovo acquisto registrato*",
+    "🛒 Nuovo acquisto registrato",
     `Fonte: ${params.source}`,
     `Totale: €${params.totalAmount.toFixed(2)}`,
   ];
@@ -78,7 +78,7 @@ export function formatNewSaleMessage(params: {
   netAmount: number;
 }) {
   return [
-    "💰 *Nuova vendita registrata*",
+    "💰 Nuova vendita registrata",
     `${params.cardName} venduta su ${params.marketplace}`,
     `Prezzo: €${params.salePrice.toFixed(2)} — Netto: €${params.netAmount.toFixed(2)}`,
   ].join("\n");
