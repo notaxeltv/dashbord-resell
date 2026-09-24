@@ -2,11 +2,10 @@
 
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ImageOff, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
 import { notify, formatCardStatusChangeMessage } from "@/lib/notify";
-import { cardImageSrc } from "@/lib/card-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +31,7 @@ import {
   CARD_CONDITIONS,
   CARD_CONDITION_LABELS,
   CARD_LANGUAGES,
+  CARD_STATUSES,
   CARD_STATUSES_EDITABLE,
   PURCHASE_SOURCES,
   SELECT_NONE,
@@ -39,6 +39,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatISODate } from "@/lib/dates";
 import type { Card as CardRow, PurchaseOption } from "@/lib/types";
+import { CardThumbnail } from "@/components/cards/card-thumbnail";
 
 export function CardDialog({
   card,
@@ -194,7 +195,6 @@ export function CardDialog({
     router.refresh();
   }
 
-  const displayImage = cardImageSrc(imageUrl);
   const soldLocked = hasSale || card.status === "sold";
 
   return (
@@ -233,18 +233,11 @@ export function CardDialog({
           )}
 
           <div className="flex items-center gap-4">
-            <div className="flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted">
-              {displayImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={displayImage}
-                  alt={form.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <ImageOff className="h-6 w-6 text-muted-foreground" />
-              )}
-            </div>
+            <CardThumbnail
+              imageUrl={imageUrl}
+              name={form.name}
+              className="h-28 w-20"
+            />
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">
                 Immagine recuperata da CardTrader in base a nome, set e numero.
@@ -495,7 +488,12 @@ export function CardDialog({
                   {soldLocked ? (
                     <SelectItem value="sold">Venduta</SelectItem>
                   ) : (
-                    CARD_STATUSES_EDITABLE.map((item) => (
+                    [
+                      ...CARD_STATUSES_EDITABLE,
+                      ...(form.status === "reserved"
+                        ? CARD_STATUSES.filter((item) => item.value === "reserved")
+                        : []),
+                    ].map((item) => (
                       <SelectItem key={item.value} value={item.value}>
                         {item.label}
                       </SelectItem>

@@ -141,16 +141,16 @@ export function PurchaseDialog({
             Modifica
           </Button>
         ) : (
-          <Button className={cn(triggerClassName)}>+ Nuovo acquisto</Button>
+          <Button className={cn(triggerClassName)}>+ Nuovo lotto</Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Modifica acquisto" : "Nuovo acquisto"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Modifica lotto" : "Nuovo lotto"}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? "Correggi i dati di questo acquisto."
-              : "Registra un nuovo acquisto (lotto, carta singola, ecc.)."}
+              ? "Correggi i dati di questo lotto."
+              : "Registra quanto hai pagato per un ordine o un lotto (cassa)."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

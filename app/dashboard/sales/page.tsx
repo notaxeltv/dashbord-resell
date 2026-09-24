@@ -58,7 +58,8 @@ export default async function SalesPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Vendite</h1>
           <p className="text-sm text-muted-foreground">
-            Storico delle vendite effettuate dal team.
+            Qui si registra quando una carta esce dall&apos;inventario. La
+            carta passa automaticamente a «venduta».
           </p>
         </div>
         <SaleDialog cards={availableCards} />

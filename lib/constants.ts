@@ -56,7 +56,7 @@ export const MARKETPLACES = [
 export const SELECT_NONE = "__none";
 
 export const CARD_STATUSES_EDITABLE = CARD_STATUSES.filter(
-  (status) => status.value !== "sold",
+  (status) => status.value === "in_stock" || status.value === "listed",
 );
 
 export function optionLabel(

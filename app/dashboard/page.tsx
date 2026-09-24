@@ -1,13 +1,5 @@
 import Link from "next/link";
-import {
-  CheckCircle2,
-  Clock,
-  Layers,
-  PackageOpen,
-  Tag,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
+import { ArrowRight, PackageOpen, TrendingUp, Wallet } from "lucide-react";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -17,28 +9,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { CardDialog } from "@/components/cards/card-dialog";
 import { CardThumbnail } from "@/components/cards/card-thumbnail";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { cn } from "@/lib/utils";
 import { formatISODate } from "@/lib/dates";
-import { cardEstimatedValue } from "@/lib/finance";
+import { cardEstimatedValue, purchaseTotal } from "@/lib/finance";
 import {
-  CARD_CONDITION_LABELS,
-  CARD_STATUS_BADGE_VARIANT,
   CARD_STATUS_LABELS,
   CARD_STATUSES,
+  MARKETPLACES,
+  optionLabel,
+  PURCHASE_SOURCES,
 } from "@/lib/constants";
-import type { Card as CardRow, PurchaseOption } from "@/lib/types";
+import type { Card as CardRow, Purchase, Sale } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -55,105 +38,117 @@ export default async function DashboardPage() {
   const [{ data: cards, error }, { data: purchases }, { data: sales }] =
     await Promise.all([
       supabase.from("cards").select("*").order("created_at", { ascending: false }),
-      supabase
-        .from("purchases")
-        .select("id, date, source, total_amount")
-        .order("date", { ascending: false }),
-      supabase.from("sales").select("card_id"),
+      supabase.from("purchases").select("*").order("date", { ascending: false }),
+      supabase.from("sales").select("*").order("sale_date", { ascending: false }),
     ]);
 
   const list = (cards ?? []) as CardRow[];
-  const purchaseOptions = (purchases ?? []) as PurchaseOption[];
-  const soldCardIds = new Set((sales ?? []).map((row) => row.card_id as string));
+  const purchaseList = (purchases ?? []) as Purchase[];
+  const saleList = (sales ?? []) as Sale[];
 
-  const totals = {
-    total: list.length,
-    in_stock: list.filter((card) => card.status === "in_stock").length,
-    listed: list.filter((card) => card.status === "listed").length,
-    reserved: list.filter((card) => card.status === "reserved").length,
-    sold: list.filter((card) => card.status === "sold").length,
-  };
-
-  const inPortfolio = list.filter((card) => card.status !== "sold");
-  const totalInvestment = inPortfolio.reduce(
+  const inStock = list.filter((card) => card.status !== "sold");
+  const listed = list.filter((card) => card.status === "listed").length;
+  const totalInvestment = inStock.reduce(
     (sum, card) => sum + Number(card.purchase_price ?? 0),
     0,
   );
-  const estimatedValue = inPortfolio.reduce(
+  const estimatedValue = inStock.reduce(
     (sum, card) => sum + cardEstimatedValue(card),
     0,
   );
-  const potentialMargin = estimatedValue - totalInvestment;
+  const spentOnLots = purchaseList.reduce((sum, p) => sum + purchaseTotal(p), 0);
+  const salesNet = saleList.reduce((sum, s) => sum + Number(s.net_amount ?? 0), 0);
 
   const statusBreakdown = CARD_STATUSES.map((status) => ({
     ...status,
     count: list.filter((card) => card.status === status.value).length,
   }));
 
-  const topCards = [...inPortfolio]
+  const topCards = [...inStock]
     .sort((a, b) => cardEstimatedValue(b) - cardEstimatedValue(a))
     .slice(0, 5);
 
+  const cardNameById = new Map(list.map((card) => [card.id, card.name]));
+  const recent = [
+    ...purchaseList.slice(0, 8).map((p) => ({
+      key: `p-${p.id}`,
+      date: p.date,
+      label: `Lotto — ${optionLabel(PURCHASE_SOURCES, p.source)}`,
+      amount: -purchaseTotal(p),
+    })),
+    ...saleList.slice(0, 8).map((s) => ({
+      key: `s-${s.id}`,
+      date: s.sale_date,
+      label: `Vendita — ${cardNameById.get(s.card_id) ?? "Carta"} · ${optionLabel(MARKETPLACES, s.marketplace)}`,
+      amount: Number(s.net_amount ?? 0),
+    })),
+  ]
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .slice(0, 8);
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Panoramica dell&apos;inventario carte Pokémon.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/dashboard/cards/new">+ Nuova carta</Link>
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Panoramica</h1>
+        <p className="text-sm text-muted-foreground">
+          Inventario, lotti pagati e vendite sono tre cose diverse: qui vedi
+          solo il riepilogo.
+        </p>
       </div>
 
       {error && (
         <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-          Errore nel caricamento delle carte: {error.message}
+          Errore nel caricamento: {error.message}
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <KpiCard label="Totale carte" value={totals.total} accent="magenta" icon={Layers} />
-        <KpiCard label="In stock" value={totals.in_stock} accent="violet" icon={PackageOpen} />
-        <KpiCard label="In vendita" value={totals.listed} accent="gold" icon={Tag} />
-        <KpiCard label="Riservate" value={totals.reserved} accent="magenta" icon={Clock} />
-        <KpiCard label="Vendute" value={totals.sold} accent="emerald" icon={CheckCircle2} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Button asChild>
+          <Link href="/dashboard/cards">
+            Apri inventario <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/purchases">Registra un lotto</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/sales">Registra una vendita</Link>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiCard
-          label="Investimento in portafoglio"
-          value={`€${totalInvestment.toFixed(2)}`}
+          label="Carte in magazzino"
+          value={inStock.length}
           accent="violet"
-          icon={Wallet}
-          hint="Somma prezzi di acquisto delle carte non vendute"
+          icon={PackageOpen}
+          hint={`${listed} in vendita · ${list.length} totali`}
         />
         <KpiCard
-          label="Valore stimato attuale"
+          label="Valore magazzino"
           value={`€${estimatedValue.toFixed(2)}`}
-          accent="gold"
-          icon={TrendingUp}
-          hint="Basato su prezzo di mercato, target o acquisto"
+          accent="magenta"
+          icon={Wallet}
+          hint={`Costo caricato: €${totalInvestment.toFixed(2)}`}
         />
         <KpiCard
-          label="Margine potenziale"
-          value={`${potentialMargin >= 0 ? "+" : "-"}€${Math.abs(potentialMargin).toFixed(2)}`}
-          accent={potentialMargin >= 0 ? "emerald" : "magenta"}
+          label="Incassato dalle vendite"
+          value={`€${salesNet.toFixed(2)}`}
+          accent="emerald"
           icon={TrendingUp}
-          hint="Valore stimato meno investimento"
+          hint={`Speso in lotti: €${spentOnLots.toFixed(2)}`}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Distribuzione per stato</CardTitle>
+            <CardTitle>Distribuzione inventario</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {statusBreakdown.map((status) => {
-              const pct = totals.total > 0 ? Math.round((status.count / totals.total) * 100) : 0;
+              const pct =
+                list.length > 0 ? Math.round((status.count / list.length) * 100) : 0;
               return (
                 <div key={status.value} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
@@ -174,22 +169,25 @@ export default async function DashboardPage() {
                 </div>
               );
             })}
-            {totals.total === 0 && (
+            {list.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Nessuna carta ancora inserita.
+                Nessuna carta in inventario.
               </p>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Carte di maggior valore</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>Maggiore valore in stock</CardTitle>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard/cards">Vedi tutte</Link>
+            </Button>
           </CardHeader>
           <CardContent className="space-y-2">
             {topCards.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Nessuna carta in portafoglio al momento.
+                Nessuna carta in magazzino.
               </p>
             )}
             {topCards.map((card, index) => {
@@ -211,7 +209,8 @@ export default async function DashboardPage() {
                     <div>
                       <p className="text-sm font-medium text-foreground">{card.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {card.set_name ?? "—"}
+                        {card.set_name ?? "—"} ·{" "}
+                        {CARD_STATUS_LABELS[card.status] ?? card.status}
                       </p>
                     </div>
                   </div>
@@ -227,172 +226,38 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Elenco carte</CardTitle>
+          <CardTitle>Ultimi movimenti di cassa</CardTitle>
         </CardHeader>
         <CardContent>
-          {list.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Nessuna carta inserita. Aggiungi la prima carta con
-              &quot;+ Nuova carta&quot;.
+          {recent.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nessun lotto o vendita registrati. I prezzi sulle carte non
+              compaiono qui.
             </p>
-          )}
-
-          {/* Vista a card impilate: usata su mobile. Ogni riquadro è
-              cliccabile e apre un popup per visualizzare/modificare/
-              eliminare la carta, senza bisogno di scroll orizzontale né di
-              navigare su una pagina separata. */}
-          {list.length > 0 && (
-            <div className="space-y-3 sm:hidden">
-              {list.map((card) => (
-                <CardDialog
-                  key={card.id}
-                  card={card}
-                  purchases={purchaseOptions}
-                  hasSale={soldCardIds.has(card.id)}
-                  triggerClassName="block rounded-lg border border-border/60 p-4"
-                  trigger={
-                    <>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <CardThumbnail
-                            imageUrl={card.image_url}
-                            name={card.name}
-                            className="h-16 w-12"
-                          />
-                          <div>
-                            <p className="font-medium text-foreground">
-                              {card.name}
-                              {card.is_foil && (
-                                <Badge variant="secondary" className="ml-2">
-                                  Foil
-                                </Badge>
-                              )}
-                              {card.is_japanese && (
-                                <Badge variant="outline" className="ml-2">
-                                  JP
-                                </Badge>
-                              )}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {card.set_name ?? "-"} ·{" "}
-                              {CARD_CONDITION_LABELS[card.condition] ?? card.condition}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge
-                          variant={CARD_STATUS_BADGE_VARIANT[card.status] ?? "default"}
-                        >
-                          {CARD_STATUS_LABELS[card.status] ?? card.status}
-                        </Badge>
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Acquisto</p>
-                          <p className="font-medium text-foreground">
-                            {card.purchase_price != null
-                              ? `€${Number(card.purchase_price).toFixed(2)}`
-                              : "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Target</p>
-                          <p className="font-medium text-foreground">
-                            {card.target_price != null
-                              ? `€${Number(card.target_price).toFixed(2)}`
-                              : "-"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Inserita il {formatISODate(card.created_at)}
-                        {" · "}Tocca per modificare o eliminare
-                      </p>
-                    </>
-                  }
-                />
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {recent.map((row) => (
+                <li
+                  key={row.key}
+                  className="flex items-center justify-between gap-3 py-2 text-sm"
+                >
+                  <div>
+                    <p className="text-foreground">{row.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatISODate(row.date)}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "font-medium",
+                      row.amount >= 0 ? "text-emerald-600" : "text-amber-700",
+                    )}
+                  >
+                    {row.amount >= 0 ? "+" : "-"}€{Math.abs(row.amount).toFixed(2)}
+                  </span>
+                </li>
               ))}
-            </div>
-          )}
-
-          {/* Vista tabellare: usata da tablet/desktop in su. */}
-          {list.length > 0 && (
-            <div className="hidden overflow-x-auto sm:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Set</TableHead>
-                    <TableHead>Condizione</TableHead>
-                    <TableHead>Acquisto</TableHead>
-                    <TableHead>Target</TableHead>
-                    <TableHead>Stato</TableHead>
-                    <TableHead>Inserita il</TableHead>
-                    <TableHead className="text-right">Azioni</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {list.map((card) => (
-                    <TableRow key={card.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-3">
-                          <CardThumbnail
-                            imageUrl={card.image_url}
-                            name={card.name}
-                            className="h-12 w-9"
-                          />
-                          <span>
-                            {card.name}
-                            {card.is_foil && (
-                              <Badge variant="secondary" className="ml-2">
-                                Foil
-                              </Badge>
-                            )}
-                            {card.is_japanese && (
-                              <Badge variant="outline" className="ml-2">
-                                JP
-                              </Badge>
-                            )}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{card.set_name ?? "-"}</TableCell>
-                      <TableCell>
-                        {CARD_CONDITION_LABELS[card.condition] ?? card.condition}
-                      </TableCell>
-                      <TableCell>
-                        {card.purchase_price != null
-                          ? `€${Number(card.purchase_price).toFixed(2)}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {card.target_price != null
-                          ? `€${Number(card.target_price).toFixed(2)}`
-                          : "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={CARD_STATUS_BADGE_VARIANT[card.status] ?? "default"}
-                        >
-                          {CARD_STATUS_LABELS[card.status] ?? card.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatISODate(card.created_at)}</TableCell>
-                      <TableCell className="whitespace-nowrap text-right">
-                        <CardDialog
-                          card={card}
-                          purchases={purchaseOptions}
-                          hasSale={soldCardIds.has(card.id)}
-                          triggerClassName="inline-flex rounded-md border border-input px-3 py-1.5 text-sm font-medium hover:bg-accent"
-                          trigger={<>Modifica</>}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            </ul>
           )}
         </CardContent>
       </Card>

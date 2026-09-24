@@ -8,12 +8,17 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
-  { href: "/dashboard", label: "Carte" },
-  { href: "/dashboard/purchases", label: "Acquisti" },
-  { href: "/dashboard/sales", label: "Vendite" },
-  { href: "/dashboard/report", label: "Resoconto" },
-  { href: "/dashboard/accounting", label: "Contabilità" },
-];
+  { href: "/dashboard", label: "Panoramica", match: "exact" },
+  { href: "/dashboard/cards", label: "Inventario", match: "prefix" },
+  { href: "/dashboard/purchases", label: "Lotti", match: "prefix" },
+  { href: "/dashboard/sales", label: "Vendite", match: "prefix" },
+  { href: "/dashboard/numbers", label: "Numeri", match: "prefix" },
+] as const;
+
+function isActive(pathname: string, href: string, match: "exact" | "prefix") {
+  if (match === "exact") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function DashboardHeader({ email }: { email: string }) {
   const router = useRouter();
@@ -55,18 +60,14 @@ export function DashboardHeader({ email }: { email: string }) {
         </div>
       </div>
       <nav className="mx-auto max-w-6xl px-4 pb-3 sm:px-6 lg:px-8">
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
                 "text-white/60 transition-colors hover:text-white",
-                (link.href === "/dashboard"
-                  ? pathname === "/dashboard" ||
-                    pathname.startsWith("/dashboard/cards")
-                  : pathname === link.href ||
-                    pathname.startsWith(`${link.href}/`)) &&
+                isActive(pathname, link.href, link.match) &&
                   "font-semibold text-amber-300",
               )}
             >

@@ -44,9 +44,11 @@ export default async function PurchasesPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Acquisti</h1>
+          <h1 className="text-2xl font-bold text-foreground">Lotti</h1>
           <p className="text-sm text-muted-foreground">
-            Storico degli acquisti effettuati dal team.
+            Soldi usciti per ordini e lotti (cassa). Non è l&apos;elenco delle
+            carte: quelle stanno in Inventario. Se una carta fa parte di un
+            lotto, collegala così il costo non viene contato due volte.
           </p>
         </div>
         <PurchaseDialog />
@@ -60,7 +62,7 @@ export default async function PurchasesPage() {
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <KpiCard
-          label="Numero acquisti"
+          label="Numero lotti"
           value={list.length}
           accent="violet"
           icon={ShoppingCart}
@@ -75,7 +77,7 @@ export default async function PurchasesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Elenco acquisti</CardTitle>
+          <CardTitle>Elenco lotti</CardTitle>
         </CardHeader>
         <CardContent>
           {list.length === 0 && (
