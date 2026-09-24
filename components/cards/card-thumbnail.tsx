@@ -1,15 +1,33 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ImageOff } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { cardImageSrc } from "@/lib/card-image";
 
+const PREVIEW_WIDTH = 240;
+const PREVIEW_HEIGHT = 336;
+const GAP = 16;
+
+function previewPosition(el: HTMLElement) {
+  const rect = el.getBoundingClientRect();
+  const spaceRight = window.innerWidth - rect.right;
+  const left =
+    spaceRight >= PREVIEW_WIDTH + GAP
+      ? rect.right + GAP
+      : Math.max(8, rect.left - PREVIEW_WIDTH - GAP);
+  const top = Math.min(
+    Math.max(8, rect.top + rect.height / 2 - PREVIEW_HEIGHT / 2),
+    window.innerHeight - PREVIEW_HEIGHT - 8,
+  );
+  return { top, left };
+}
+
 /**
  * Miniatura dell'immagine di una carta. Al passaggio del mouse mostra
- * un'anteprima ingrandita (solo se l'immagine è disponibile).
+ * un'anteprima ingrandita nel viewport (fuori da tabelle con overflow).
  */
 export function CardThumbnail({
   imageUrl,
@@ -21,63 +39,83 @@ export function CardThumbnail({
   className?: string;
 }) {
   const src = cardImageSrc(imageUrl);
-  const ref = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
   const [preview, setPreview] = useState<{ top: number; left: number } | null>(
     null,
   );
 
-  function showPreview() {
-    if (!src || !ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const previewWidth = 220;
-    const previewHeight = 308;
-    const gap = 12;
-    const spaceRight = window.innerWidth - rect.right;
-    const left =
-      spaceRight >= previewWidth + gap
-        ? rect.right + gap
-        : Math.max(8, rect.left - previewWidth - gap);
-    const top = Math.min(
-      Math.max(8, rect.top + rect.height / 2 - previewHeight / 2),
-      window.innerHeight - previewHeight - 8,
-    );
-    setPreview({ top, left });
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!preview) return;
+    function hide() {
+      setPreview(null);
+    }
+    window.addEventListener("scroll", hide, true);
+    window.addEventListener("resize", hide);
+    return () => {
+      window.removeEventListener("scroll", hide, true);
+      window.removeEventListener("resize", hide);
+    };
+  }, [preview]);
+
+  function show(el: HTMLElement) {
+    if (!src) return;
+    setPreview(previewPosition(el));
   }
 
   return (
     <>
       <div
-        ref={ref}
-        onMouseEnter={showPreview}
-        onMouseLeave={() => setPreview(null)}
+        onPointerEnter={(event) => {
+          if (event.pointerType === "touch") return;
+          show(event.currentTarget);
+        }}
+        onPointerMove={(event) => {
+          if (event.pointerType === "touch" || !src) return;
+          show(event.currentTarget);
+        }}
+        onPointerLeave={() => setPreview(null)}
         className={cn(
-          "flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted transition duration-200",
-          src &&
-            "cursor-zoom-in hover:z-10 hover:scale-110 hover:shadow-lg hover:ring-2 hover:ring-fuchsia-400/60",
+          "relative flex h-12 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted",
+          src && "cursor-zoom-in",
           className,
         )}
       >
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={src} alt={name} className="h-full w-full object-cover" />
+          <img
+            src={src}
+            alt={name}
+            draggable={false}
+            className="pointer-events-none h-full w-full object-cover"
+          />
         ) : (
           <ImageOff className="h-4 w-4 text-muted-foreground" />
         )}
       </div>
-      {preview &&
+      {mounted &&
+        preview &&
         src &&
-        typeof document !== "undefined" &&
         createPortal(
           <div
-            className="pointer-events-none fixed z-[200] animate-in fade-in-0 zoom-in-95 duration-150"
-            style={{ top: preview.top, left: preview.left }}
+            role="presentation"
+            className="pointer-events-none fixed z-[9999]"
+            style={{
+              top: preview.top,
+              left: preview.left,
+              width: PREVIEW_WIDTH,
+              height: PREVIEW_HEIGHT,
+            }}
           >
-            <div className="overflow-hidden rounded-xl border border-fuchsia-400/40 bg-[#170821] shadow-2xl shadow-fuchsia-950/40 ring-1 ring-white/10">
+            <div className="h-full w-full overflow-hidden rounded-xl border-2 border-fuchsia-400 bg-[#170821] shadow-2xl shadow-black/50 ring-1 ring-white/20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={src}
-                alt={name}
-                className="h-[308px] w-[220px] object-cover"
+                alt=""
+                className="h-full w-full object-cover"
               />
             </div>
           </div>,
