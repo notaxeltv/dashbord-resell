@@ -15,6 +15,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+function loginErrorMessage(message: string, code?: string) {
+  const text = `${code ?? ""} ${message}`.toLowerCase();
+  if (text.includes("email_not_confirmed") || text.includes("not confirmed")) {
+    return "Email non confermata. In Supabase → Authentication → Users apri l’utente e conferma l’email (oppure ricrealo con “Auto Confirm User”).";
+  }
+  if (
+    text.includes("invalid api key") ||
+    text.includes("jwt") ||
+    text.includes("malformed")
+  ) {
+    return "Chiave API non valida. In .env.local usa l’anon key o la publishable key completa (non un pezzo), poi riavvia npm run dev.";
+  }
+  if (text.includes("failed to fetch") || text.includes("network")) {
+    return "Impossibile raggiungere Supabase. Controlla NEXT_PUBLIC_SUPABASE_URL (solo https://xxxx.supabase.co, senza /rest/v1).";
+  }
+  if (text.includes("invalid login") || text.includes("invalid credentials")) {
+    return "Email o password non corretti.";
+  }
+  return message || "Accesso non riuscito.";
+}
+
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -28,12 +49,12 @@ export function LoginForm() {
     setError(null);
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     });
 
     if (signInError) {
-      setError("Email o password non corretti.");
+      setError(loginErrorMessage(signInError.message, signInError.code));
       setLoading(false);
       return;
     }

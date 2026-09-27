@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { href: "/dashboard/purchases", label: "Lotti", match: "prefix" },
   { href: "/dashboard/sales", label: "Vendite", match: "prefix" },
   { href: "/dashboard/numbers", label: "Numeri", match: "prefix" },
+  { href: "/dashboard/import", label: "Import JP", match: "prefix" },
 ] as const;
 
 function isActive(pathname: string, href: string, match: "exact" | "prefix") {

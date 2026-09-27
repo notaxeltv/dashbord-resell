@@ -1,15 +1,20 @@
 import { createBrowserClient } from "@supabase/ssr";
 
+import { getSupabasePublicEnv } from "@/lib/env";
+
 /**
  * Crea un nuovo client Supabase per l'uso nel browser (Client Components).
  * Usa le variabili d'ambiente pubbliche NEXT_PUBLIC_SUPABASE_URL e
  * NEXT_PUBLIC_SUPABASE_ANON_KEY.
  */
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  const env = getSupabasePublicEnv();
+  if (!env) {
+    throw new Error(
+      "Mancano NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local",
+    );
+  }
+  return createBrowserClient(env.url, env.key);
 }
 
 /**
