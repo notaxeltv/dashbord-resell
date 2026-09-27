@@ -38,3 +38,17 @@ export function monthFromISODate(value: string): number {
   const parts = parseISODateParts(value);
   return parts ? parts.month - 1 : new Date(value).getMonth();
 }
+
+/** Data e ora in it-IT a partire da un timestamptz ISO. */
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

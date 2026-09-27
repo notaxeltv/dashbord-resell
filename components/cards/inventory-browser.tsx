@@ -19,10 +19,12 @@ export function InventoryBrowser({
   cards,
   purchases,
   soldCardIds,
+  authorNames,
 }: {
   cards: CardRow[];
   purchases: PurchaseOption[];
   soldCardIds: string[];
+  authorNames: Record<string, string>;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState(SELECT_NONE);
@@ -71,6 +73,7 @@ export function InventoryBrowser({
         cards={filtered}
         purchases={purchases}
         soldCardIds={soldCardIds}
+        authorNames={authorNames}
       />
     </div>
   );

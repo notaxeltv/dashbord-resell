@@ -21,11 +21,18 @@ export function CardInventoryList({
   cards,
   purchases,
   soldCardIds,
+  authorNames,
 }: {
   cards: CardRow[];
   purchases: PurchaseOption[];
   soldCardIds: string[];
+  authorNames: Record<string, string>;
 }) {
+  function who(card: CardRow) {
+    const id = card.updated_by || card.owner_id;
+    return authorNames[id] ?? "—";
+  }
+
   if (cards.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-muted-foreground">
@@ -99,7 +106,7 @@ export function CardInventoryList({
                 </div>
 
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Inserita il {formatISODate(card.created_at)}
+                  Inserita il {formatISODate(card.created_at)} · {who(card)}
                   {" · "}Tocca per modificare
                 </p>
               </>
@@ -118,6 +125,7 @@ export function CardInventoryList({
               <TableHead>Costo carta</TableHead>
               <TableHead>Target</TableHead>
               <TableHead>Stato</TableHead>
+              <TableHead>Autore</TableHead>
               <TableHead>Inserita il</TableHead>
               <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
@@ -166,6 +174,7 @@ export function CardInventoryList({
                     {CARD_STATUS_LABELS[card.status] ?? card.status}
                   </Badge>
                 </TableCell>
+                <TableCell>{who(card)}</TableCell>
                 <TableCell>{formatISODate(card.created_at)}</TableCell>
                 <TableCell className="whitespace-nowrap text-right">
                   <CardDialog

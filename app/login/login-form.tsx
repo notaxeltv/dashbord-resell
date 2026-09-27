@@ -60,6 +60,18 @@ export function LoginForm() {
       return;
     }
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("activity_log").insert({
+        actor_id: user.id,
+        action: "login",
+        entity_type: "session",
+        summary: "Ha effettuato l'accesso",
+      });
+    }
+
     router.push("/dashboard");
     router.refresh();
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Landmark, Package, Plane, Receipt } from "lucide-react";
+import { Landmark, Package, Percent, TrendingUp } from "lucide-react";
 
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Button } from "@/components/ui/button";
@@ -122,6 +122,7 @@ export function JapanImportEstimator() {
   const [shippingPreset, setShippingPreset] = useState("custom");
   const [applyDutyExemption, setApplyDutyExemption] = useState(false);
   const [quantity, setQuantity] = useState("");
+  const [markupPct, setMarkupPct] = useState("40");
 
   useEffect(() => {
     let cancelled = false;
@@ -166,6 +167,7 @@ export function JapanImportEstimator() {
         extraEur,
         applyDutyExemptionUnder150: applyDutyExemption,
         quantity: parseAmount(quantity),
+        markupPct: parseAmount(markupPct),
       }),
     [
       goodsJpy,
@@ -179,6 +181,7 @@ export function JapanImportEstimator() {
       extraEur,
       applyDutyExemption,
       quantity,
+      markupPct,
     ],
   );
 
@@ -293,6 +296,22 @@ export function JapanImportEstimator() {
                   value={quantity}
                   onChange={(event) => setQuantity(event.target.value)}
                 />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="markup">Ricarico sulla vendita (%)</Label>
+                <Input
+                  id="markup"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="es. 40"
+                  value={markupPct}
+                  onChange={(event) => setMarkupPct(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Prezzo di vendita = costo sbarcato × (1 + ricarico). Il guadagno
+                  è la differenza. Il margine sul prezzo è calcolato in automatico.
+                </p>
               </div>
             </div>
 
@@ -446,32 +465,32 @@ export function JapanImportEstimator() {
               hint="Quanto ti costa tutto compreso"
             />
             <KpiCard
-              label="Dazi + IVA + svincolo"
-              value={money(result.importCharges)}
+              label="Prezzo di vendita"
+              value={money(result.sellingPrice)}
               accent="gold"
-              icon={Landmark}
-              hint="Soldi da pagare in più rispetto a merce e nolo"
+              icon={Percent}
+              hint={`Ricarico ${result.markupPct.toLocaleString("it-IT")}% sul costo`}
             />
             <KpiCard
-              label="IVA"
-              value={money(result.vat)}
-              accent="violet"
-              icon={Receipt}
-              hint={`Base ${money(result.vatBase)}`}
-            />
-            <KpiCard
-              label={result.perUnit != null ? "Costo a pezzo" : "Spedizione"}
-              value={
-                result.perUnit != null
-                  ? money(result.perUnit)
-                  : money(result.shippingEur)
-              }
+              label="Guadagno"
+              value={money(result.profit)}
               accent="emerald"
-              icon={Plane}
+              icon={TrendingUp}
+              hint={`Margine sul prezzo ${result.marginPct.toFixed(1)}%`}
+            />
+            <KpiCard
+              label={result.perUnit != null ? "A pezzo" : "Dazi + IVA + svincolo"}
+              value={
+                result.sellingPerUnit != null
+                  ? money(result.sellingPerUnit)
+                  : money(result.importCharges)
+              }
+              accent="violet"
+              icon={Landmark}
               hint={
-                result.perUnit != null
-                  ? "Totale diviso i pezzi inseriti"
-                  : "Solo nolo internazionale"
+                result.profitPerUnit != null
+                  ? `Costo ${money(result.perUnit ?? 0)} · guadagno ${money(result.profitPerUnit)}`
+                  : "Soldi da pagare in più rispetto a merce e nolo"
               }
             />
           </div>
@@ -501,9 +520,21 @@ export function JapanImportEstimator() {
                   </li>
                 ))}
                 <li className="flex items-center justify-between gap-3 py-2">
-                  <span className="font-semibold text-foreground">Totale</span>
+                  <span className="font-semibold text-foreground">Costo sbarcato</span>
                   <span className="font-semibold tabular-nums text-foreground">
                     {money(result.total)}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between gap-3 py-2">
+                  <span className="text-muted-foreground">Prezzo di vendita</span>
+                  <span className="font-medium tabular-nums text-foreground">
+                    {money(result.sellingPrice)}
+                  </span>
+                </li>
+                <li className="flex items-center justify-between gap-3 py-2">
+                  <span className="font-semibold text-foreground">Guadagno</span>
+                  <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {money(result.profit)}
                   </span>
                 </li>
               </ul>

@@ -6,14 +6,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { InventoryBrowser } from "@/components/cards/inventory-browser";
-import type { Card as CardRow, PurchaseOption } from "@/lib/types";
+import { actorLabel } from "@/lib/activity";
+import type { Card as CardRow, Profile, PurchaseOption } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function InventoryPage() {
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: cards, error }, { data: purchases }, { data: sales }] =
+  const [{ data: cards, error }, { data: purchases }, { data: sales }, { data: profiles }] =
     await Promise.all([
       supabase.from("cards").select("*").order("created_at", { ascending: false }),
       supabase
@@ -21,11 +22,15 @@ export default async function InventoryPage() {
         .select("id, date, source, total_amount")
         .order("date", { ascending: false }),
       supabase.from("sales").select("card_id"),
+      supabase.from("profiles").select("id, email, display_name, role, created_at"),
     ]);
 
   const list = (cards ?? []) as CardRow[];
   const purchaseOptions = (purchases ?? []) as PurchaseOption[];
   const soldCardIds = (sales ?? []).map((row) => row.card_id as string);
+  const authorNames = Object.fromEntries(
+    ((profiles ?? []) as Profile[]).map((profile) => [profile.id, actorLabel(profile)]),
+  );
 
   return (
     <div className="space-y-8">
@@ -52,6 +57,7 @@ export default async function InventoryPage() {
             cards={list}
             purchases={purchaseOptions}
             soldCardIds={soldCardIds}
+            authorNames={authorNames}
           />
         </CardContent>
       </Card>

@@ -29,6 +29,7 @@ export interface Card {
   image_url: string | null;
   purchase_id: string | null;
   owner_id: string;
+  updated_by?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -79,4 +80,14 @@ export interface PurchaseOption {
   date: string;
   source: string;
   total_amount: number;
+}
+
+export interface ActivityLog {
+  id: string;
+  created_at: string;
+  actor_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  summary: string;
 }

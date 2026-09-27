@@ -49,6 +49,7 @@ export type JapanImportInput = {
   extraEur: number;
   applyDutyExemptionUnder150: boolean;
   quantity: number;
+  markupPct: number;
 };
 
 export type JapanImportResult = {
@@ -65,6 +66,12 @@ export type JapanImportResult = {
   importCharges: number;
   total: number;
   perUnit: number | null;
+  markupPct: number;
+  sellingPrice: number;
+  profit: number;
+  marginPct: number;
+  sellingPerUnit: number | null;
+  profitPerUnit: number | null;
 };
 
 function jpyToEur(jpy: number, jpyPerEur: number) {
@@ -94,6 +101,12 @@ export function estimateJapanImport(input: JapanImportInput): JapanImportResult 
   const total = goodsEur + shippingEur + insuranceEur + proxyEur + importCharges;
   const qty = Math.floor(input.quantity);
   const perUnit = qty > 0 ? total / qty : null;
+  const markupPct = Math.max(0, input.markupPct);
+  const sellingPrice = total * (1 + markupPct / 100);
+  const profit = sellingPrice - total;
+  const marginPct = sellingPrice > 0 ? (profit / sellingPrice) * 100 : 0;
+  const sellingPerUnit = qty > 0 ? sellingPrice / qty : null;
+  const profitPerUnit = qty > 0 ? profit / qty : null;
 
   return {
     goodsEur,
@@ -109,6 +122,12 @@ export function estimateJapanImport(input: JapanImportInput): JapanImportResult 
     importCharges,
     total,
     perUnit,
+    markupPct,
+    sellingPrice,
+    profit,
+    marginPct,
+    sellingPerUnit,
+    profitPerUnit,
   };
 }
 
