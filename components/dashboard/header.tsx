@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
+import { BrandLogo } from "@/components/brand-logo";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -37,19 +39,20 @@ export function DashboardHeader({ email }: { email: string }) {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 text-lg font-semibold"
+          className="flex items-center gap-3 text-lg font-semibold"
         >
-          <span aria-hidden className="drop-shadow-[0_0_6px_rgba(217,70,239,0.8)]">
-            🃏
+          <span className="relative flex h-11 w-11 shrink-0 overflow-hidden rounded-md bg-white shadow-[0_0_14px_rgba(168,85,247,0.45)]">
+            <BrandLogo size={44} priority />
           </span>
-          <span className="bg-gradient-to-r from-fuchsia-300 via-white to-amber-300 bg-clip-text text-transparent">
-            Pokémon Card Manager
+          <span className="hidden bg-gradient-to-r from-fuchsia-300 via-white to-violet-300 bg-clip-text text-transparent sm:inline">
+            Dark Ghost Cards
           </span>
         </Link>
         <div className="flex items-center gap-4">
           <span className="hidden text-sm text-white/70 sm:inline">
             {email}
           </span>
+          <ThemeToggle className="border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white" />
           <Button
             variant="outline"
             size="sm"

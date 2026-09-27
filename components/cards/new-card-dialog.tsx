@@ -181,7 +181,7 @@ export function NewCardDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>
+            <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">{error}</p>
           )}
 
           <div className="space-y-2">

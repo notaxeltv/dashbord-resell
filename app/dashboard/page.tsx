@@ -97,7 +97,7 @@ export default async function DashboardPage() {
       </div>
 
       {error && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
           Errore nel caricamento: {error.message}
         </p>
       )}
@@ -250,7 +250,7 @@ export default async function DashboardPage() {
                   <span
                     className={cn(
                       "font-medium",
-                      row.amount >= 0 ? "text-emerald-600" : "text-amber-700",
+                      row.amount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-400",
                     )}
                   >
                     {row.amount >= 0 ? "+" : "-"}€{Math.abs(row.amount).toFixed(2)}

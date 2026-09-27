@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { supabase } from "@/lib/supabase";
+import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,10 +73,10 @@ export function LoginForm() {
       <Card className="relative w-full max-w-sm overflow-hidden border-white/10 shadow-2xl">
         <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-fuchsia-500 via-amber-400 to-fuchsia-500" />
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-2 text-3xl drop-shadow-[0_0_10px_rgba(217,70,239,0.6)]">
-            🃏
+          <div className="mx-auto mb-2 h-28 w-28 overflow-hidden rounded-xl bg-white shadow-[0_0_24px_rgba(168,85,247,0.35)]">
+            <BrandLogo size={112} priority />
           </div>
-          <CardTitle className="text-xl">Pokémon Card Manager</CardTitle>
+          <CardTitle className="text-xl">Dark Ghost Cards</CardTitle>
           <CardDescription>
             Accedi con le credenziali fornite dal team.
           </CardDescription>
@@ -83,7 +84,7 @@ export function LoginForm() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+              <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
                 {error}
               </p>
             )}

@@ -1,7 +1,12 @@
+import { BrandLogo } from "@/components/brand-logo";
+
 export default function MissingEnvPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#100815] px-4 py-12 text-white">
       <div className="w-full max-w-lg space-y-4 rounded-xl border border-white/10 bg-white/5 p-6 shadow-2xl">
+        <div className="h-16 w-16 overflow-hidden rounded-lg bg-white">
+          <BrandLogo size={64} priority />
+        </div>
         <p className="text-sm font-medium text-amber-300">Configurazione locale</p>
         <h1 className="text-2xl font-bold">Mancano le chiavi Supabase</h1>
         <p className="text-sm text-white/75">

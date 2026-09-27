@@ -11,10 +11,10 @@ const ACCENTS = {
 } as const;
 
 const ICON_BG = {
-  magenta: "bg-fuchsia-500/10 text-fuchsia-600",
-  gold: "bg-amber-500/10 text-amber-600",
-  violet: "bg-violet-500/10 text-violet-600",
-  emerald: "bg-emerald-500/10 text-emerald-600",
+  magenta: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-300",
+  gold: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
 } as const;
 
 export function KpiCard({

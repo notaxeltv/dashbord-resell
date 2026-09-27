@@ -198,7 +198,7 @@ export default async function NumbersPage({
       </Card>
 
       {error && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
           Errore nel caricamento dei numeri.
         </p>
       )}
@@ -268,7 +268,7 @@ export default async function NumbersPage({
                     <TableCell
                       className={cn(
                         "text-right font-medium",
-                        row.amount >= 0 ? "text-emerald-600" : "text-red-600",
+                        row.amount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400",
                       )}
                     >
                       {row.amount >= 0 ? "+" : "-"}€{Math.abs(row.amount).toFixed(2)}
@@ -326,8 +326,8 @@ export default async function NumbersPage({
                           className={cn(
                             "text-right font-medium",
                             transaction.type === "income"
-                              ? "text-emerald-600"
-                              : "text-amber-600",
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-amber-600 dark:text-amber-400",
                           )}
                         >
                           {transaction.type === "income" ? "+" : "-"}€
