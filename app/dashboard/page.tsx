@@ -102,7 +102,7 @@ export default async function DashboardPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Button asChild>
           <Link href="/dashboard/cards">
             Apri inventario <ArrowRight className="ml-2 h-4 w-4" />
@@ -113,6 +113,9 @@ export default async function DashboardPage() {
         </Button>
         <Button asChild variant="outline">
           <Link href="/dashboard/sales">Registra una vendita</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/registro">Apri registro</Link>
         </Button>
       </div>
 
