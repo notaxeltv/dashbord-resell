@@ -1,4 +1,5 @@
 import { createHash, randomInt } from "crypto";
+import nodemailer from "nodemailer";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -38,38 +39,35 @@ export function registroRecipientEmails(profileEmails: string[]) {
   return emails.slice(0, 2);
 }
 
+const GMAIL_USER = "darkghost.cards@gmail.com";
+
 export async function sendRegistroKeyEmail(to: string, code: string) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.REGISTRO_EMAIL_FROM;
-  if (!apiKey || !from) {
+  const user = process.env.GMAIL_USER?.trim() || GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "") ?? "";
+  if (!pass) {
     throw new Error(
-      "Mancano RESEND_API_KEY e REGISTRO_EMAIL_FROM su Vercel. Senza quelle le chiavi non partono.",
+      "Manca GMAIL_APP_PASSWORD. In Google Account crea una password per le app e mettila su Vercel, poi rideploya.",
     );
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject: "Chiave per eliminare il registro",
-      text: [
-        "Dark Ghost Cards",
-        "",
-        `La tua chiave è: ${code}`,
-        "L'altra chiave è stata inviata all'altra email del team.",
-        "Inseritele entrambe nella pagina Registro entro 10 minuti.",
-        "Se non hai chiesto tu questa cancellazione, ignora il messaggio.",
-      ].join("\n"),
-    }),
+  const transport = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: { user, pass },
   });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Invio email non riuscito: ${body.slice(0, 180)}`);
-  }
+  await transport.sendMail({
+    from: `Dark Ghost Cards <${user}>`,
+    to,
+    subject: "Chiave per eliminare il registro",
+    text: [
+      "Dark Ghost Cards",
+      "",
+      `La tua chiave è: ${code}`,
+      "L'altra chiave è stata inviata all'altra email del team.",
+      "Inseritele entrambe nella pagina Registro entro 10 minuti.",
+      "Se non hai chiesto tu questa cancellazione, ignora il messaggio.",
+    ].join("\n"),
+  });
 }
