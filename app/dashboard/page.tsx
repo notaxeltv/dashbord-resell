@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CardThumbnail } from "@/components/cards/card-thumbnail";
+import { NewCardDialog } from "@/components/cards/new-card-dialog";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { cn } from "@/lib/utils";
 import { formatISODate } from "@/lib/dates";
@@ -102,12 +103,21 @@ export default async function DashboardPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Button asChild>
           <Link href="/dashboard/cards">
             Apri inventario <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
+        <NewCardDialog
+          purchases={purchaseList.map((p) => ({
+            id: p.id,
+            date: p.date,
+            source: p.source,
+            total_amount: p.total_amount,
+          }))}
+          triggerClassName="w-full"
+        />
         <Button asChild variant="outline">
           <Link href="/dashboard/purchases">Registra un lotto</Link>
         </Button>

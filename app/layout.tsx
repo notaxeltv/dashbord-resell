@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { ThemeProvider } from "@/components/theme/theme-provider";
@@ -18,6 +18,22 @@ export const metadata: Metadata = {
   title: "Dark Ghost Cards",
   description:
     "Dashboard per la gestione di inventario, acquisti e vendite di carte Pokémon.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Dark Ghost Cards",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#170821",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
