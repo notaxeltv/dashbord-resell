@@ -118,6 +118,13 @@ persone (es. tu e un socio) con dati condivisi.
   badge di stato, prezzi), su tablet/desktop è la tabella classica con
   nome, set, condizione, prezzo acquisto, prezzo target, stato, data di
   inserimento e miniatura nella colonna "Nome".
+- **Ricerca, filtro per stato e ordinamento colonne** (nome, costo, target,
+  stato, data) sulla tabella desktop; **esporta CSV** con l'elenco filtrato
+  e ordinato attualmente a schermo.
+- **Selezione multipla** (checkbox su mobile e desktop) per azioni di
+  massa: cambio stato in blocco (In stock/In vendita/Riservata) o
+  eliminazione multipla. Le carte già vendute vengono escluse in automatico
+  dalle azioni di massa (lo stato venduta si gestisce da Vendite).
 - **+ Nuova carta** → form completo (`/dashboard/cards/new`) con tutti i
   campi richiesti (nome, set, codice set, numero, lingua, condizione, foil,
   edizione giapponese, prezzo/data/fonte acquisto, prezzo target, stato,
@@ -147,17 +154,25 @@ persone (es. tu e un socio) con dati condivisi.
 - Elenco storico con data, fonte, totale, spedizione, note, chi ha inserito
   l'acquisto.
 - KPI: numero acquisti, totale spesa (incluse spedizioni).
+- **Ricerca** (fonte, note, autore), **filtro per fonte**, **ordinamento**
+  per data/fonte/totale/spedizione ed **esporta CSV** dell'elenco filtrato.
 - **+ Nuovo acquisto** apre una modale (shadcn `Dialog`) con il form di
   inserimento; `created_by` viene impostato sull'utente loggato.
 - **Modifica** apre la stessa modale precompilata con i dati esistenti, per
   correggere un inserimento errato (data, fonte, importi, note).
 - Eliminazione riga con conferma.
+- Il simulatore **Import Giappone** (vedi sotto) può precompilare qui un
+  nuovo lotto con il costo sbarcato calcolato, tramite il bottone "Usa
+  questa stima per un nuovo lotto".
 
 ### Vendite (`/dashboard/sales`)
 
 - Elenco storico con data, carta venduta, marketplace, prezzo, fee, importo
   netto (calcolato automaticamente dal database), venditore.
 - KPI: numero vendite, incasso netto totale.
+- **Ricerca** (carta, marketplace, acquirente, autore), **filtro per
+  marketplace**, **ordinamento** per data/marketplace/prezzo/netto ed
+  **esporta CSV** dell'elenco filtrato.
 - **+ Nuova vendita** apre una modale con selezione della carta (solo carte
   non ancora vendute), marketplace, prezzo, spedizione rimborsata dal
   compratore, fee, data, info acquirente, note. `sold_by` viene impostato
@@ -226,10 +241,47 @@ e/o su WhatsApp (tramite Twilio) in questi casi:
 - **Nuovo acquisto registrato** — fonte, totale, spedizione.
 - **Nuova vendita registrata** — carta, marketplace, prezzo, netto.
 
+- **Digest giornaliero** — un riepilogo automatico una volta al giorno
+  (nuove carte, lotti e vendite delle ultime 24 ore, con margine di
+  giornata), inviato da un cron job su Vercel. Vedi [Digest giornaliero
+  automatico](#digest-giornaliero-automatico-vercel-cron).
+
 Entrambi i canali sono **opzionali e indipendenti**: se le relative
 variabili d'ambiente non sono configurate, l'app funziona normalmente senza
 inviare nulla. Vedi [Notifiche Telegram e WhatsApp](#notifiche-telegram-e-whatsapp)
 per la configurazione.
+
+### Registro (`/dashboard/registro`)
+
+- Cronologia di tutte le azioni del team: creazione/modifica/eliminazione
+  di carte, lotti, vendite, movimenti extra e accessi (login), con autore e
+  data/ora.
+- Filtri per categoria (Carte/Lotti/Vendite/Extra/Accessi), per **tipo di
+  azione** (Creato/Modificato/Eliminato/Accesso) e per **autore**, oltre a
+  selezione multipla ed **esporta CSV** dell'elenco filtrato.
+- **Eliminazione protetta**: cancellare voci dal registro (singole,
+  selezionate o tutto) richiede due chiavi diverse via email, una per
+  ciascun membro del team, che scadono dopo 10 minuti (vedi
+  `supabase/activity_delete.sql`).
+
+### Import Giappone (`/dashboard/import`)
+
+- Simulatore di costo sbarcato per un acquisto dal Giappone: dazio, IVA,
+  spedizione, commissione proxy, cambio ¥/€ (con tasso BCE aggiornato
+  automaticamente), stima di prezzo di vendita e margine.
+- Il bottone **"Usa questa stima per un nuovo lotto"** apre direttamente
+  Lotti con un nuovo acquisto precompilato (totale e spedizione) a partire
+  dal calcolo appena fatto.
+
+### App installabile (PWA) e nav mobile
+
+- L'app ha un `manifest.json` con icone e colore tema: su smartphone si può
+  "Aggiungere alla schermata Home" per aprirla come un'app a schermo
+  intero, senza barra degli indirizzi.
+- Su schermi piccoli è presente una **barra di navigazione fissa in fondo**
+  con le 5 sezioni più usate (Home, Inventario, Lotti, Vendite, Numeri); il
+  menu completo (incluso Import Giappone e Registro) resta comunque
+  nell'header.
 
 ## Setup Supabase
 
@@ -383,6 +435,50 @@ ai numeri che si sono uniti alla sandbox. Per un uso in produzione stabile
 con WhatsApp servirebbe richiedere un numero WhatsApp Business verificato su
 Twilio (a pagamento, richiede approvazione).
 
+### Digest giornaliero automatico (Vercel Cron)
+
+Oltre alle notifiche per singolo evento, l'app può inviare un riepilogo
+automatico una volta al giorno (nuove carte, lotti e vendite delle ultime
+24 ore) su Telegram/WhatsApp, tramite un [Cron Job di
+Vercel](https://vercel.com/docs/cron-jobs) che chiama
+`app/api/cron/daily-digest/route.ts`. Funziona solo dopo il deploy su
+Vercel (non in locale, dove non esiste uno scheduler): richiede due
+variabili in più, da impostare tra le Environment Variables del progetto
+su Vercel.
+
+1. **`CRON_SECRET`**: una stringa a caso generata da te, ad esempio con
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+   Impostala su Vercel come `CRON_SECRET`. Vercel la userà in automatico
+   come header `Authorization: Bearer <valore>` quando chiama la rotta
+   pianificata in `vercel.json` — senza quella variabile configurata (o se
+   l'header non corrisponde) la rotta risponde `401` e non invia nulla.
+2. **`SUPABASE_SERVICE_ROLE_KEY`**: da Supabase → **Project Settings >
+   API > service_role**. Serve solo a questa rotta per leggere i dati senza
+   una sessione utente (il cron non ha un login). ⚠️ **Non deve mai**
+   iniziare con `NEXT_PUBLIC_` e non va mai esposta al browser: impostala
+   solo come variabile d'ambiente server-side su Vercel, mai in codice o in
+   `NEXT_PUBLIC_*`.
+3. L'orario di invio è definito in [`vercel.json`](./vercel.json) come
+   [espressione cron](https://crontab.guru) in UTC (default: `0 19 * * *`,
+   cioè le 21:00 ora italiana in estate/20:00 in inverno). Modificalo se
+   preferisci un altro orario.
+4. Se nessun canale (Telegram/WhatsApp) è configurato, o se non c'è stata
+   attività nelle ultime 24 ore, il digest viene comunque generato (e lo
+   trovi loggato nella risposta della rotta) ma non arriva alcun messaggio
+   reale.
+
+Puoi testare la rotta manualmente (anche in locale, se hai impostato
+`SUPABASE_SERVICE_ROLE_KEY` in `.env.local`) con:
+
+```bash
+curl http://localhost:3000/api/cron/daily-digest \
+  -H "Authorization: Bearer IL_TUO_CRON_SECRET"
+```
+
 ### Verifica rapida
 
 Con il server avviato (`npm run dev`) e dopo aver effettuato il login
@@ -459,6 +555,9 @@ funziona normalmente e mostra solo un placeholder al posto dell'immagine.
      `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`,
      `TWILIO_WHATSAPP_TO` se vuoi abilitare le notifiche (vedi
      [sezione dedicata](#notifiche-telegram-e-whatsapp))
+   - (opzionale) `CRON_SECRET` e `SUPABASE_SERVICE_ROLE_KEY` se vuoi
+     abilitare il digest giornaliero automatico (vedi [sezione
+     dedicata](#digest-giornaliero-automatico-vercel-cron))
    - (opzionale) `CARDTRADER_API_TOKEN` se vuoi abilitare il recupero
      automatico delle immagini delle carte (vedi
      [sezione dedicata](#configurazione-immagini-carte-cardtrader))
