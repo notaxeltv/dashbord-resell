@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { PeriodFilter } from "@/components/reports/period-filter";
 import { SpendingChart } from "@/components/reports/spending-chart";
+import { NumbersDetailTable } from "@/components/reports/numbers-detail-table";
 import { TransactionDialog } from "@/components/accounting/transaction-dialog";
 import { DeleteTransactionButton } from "@/components/accounting/delete-transaction-button";
 import { TaxEstimator } from "@/components/accounting/tax-estimator";
@@ -244,40 +245,7 @@ export default async function NumbersPage({
           <CardTitle>Dettaglio</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Movimento</TableHead>
-                  <TableHead className="text-right">Importo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {combinedRows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
-                      Nessun movimento nel periodo.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {combinedRows.map((row, index) => (
-                  <TableRow key={`${row.type}-${index}`}>
-                    <TableCell>{formatISODate(row.date)}</TableCell>
-                    <TableCell>{row.label}</TableCell>
-                    <TableCell
-                      className={cn(
-                        "text-right font-medium",
-                        row.amount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400",
-                      )}
-                    >
-                      {row.amount >= 0 ? "+" : "-"}€{Math.abs(row.amount).toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <NumbersDetailTable rows={combinedRows} periodLabel={periodLabel} />
         </CardContent>
       </Card>
 

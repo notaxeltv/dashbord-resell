@@ -30,35 +30,48 @@ import { cn } from "@/lib/utils";
 import { PURCHASE_SOURCES } from "@/lib/constants";
 import type { Purchase } from "@/lib/types";
 
+export interface PurchasePrefill {
+  source?: string;
+  totalAmount?: string;
+  shippingCost?: string;
+  notes?: string;
+}
+
 export function PurchaseDialog({
   purchase,
   triggerClassName,
+  initialOpen = false,
+  prefill,
+  onOpenChangeExternal,
 }: {
   purchase?: Purchase;
   triggerClassName?: string;
+  initialOpen?: boolean;
+  prefill?: PurchasePrefill;
+  onOpenChangeExternal?: (open: boolean) => void;
 }) {
   const isEdit = Boolean(purchase);
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [date, setDate] = useState(purchase?.date ?? todayISO());
-  const [source, setSource] = useState(purchase?.source ?? "cardmarket");
+  const [source, setSource] = useState(purchase?.source ?? prefill?.source ?? "cardmarket");
   const [totalAmount, setTotalAmount] = useState(
-    purchase ? String(purchase.total_amount) : "",
+    purchase ? String(purchase.total_amount) : prefill?.totalAmount ?? "",
   );
   const [shippingCost, setShippingCost] = useState(
-    purchase ? String(purchase.shipping_cost ?? 0) : "0",
+    purchase ? String(purchase.shipping_cost ?? 0) : prefill?.shippingCost ?? "0",
   );
-  const [notes, setNotes] = useState(purchase?.notes ?? "");
+  const [notes, setNotes] = useState(purchase?.notes ?? prefill?.notes ?? "");
 
   function resetForm() {
     setDate(purchase?.date ?? todayISO());
-    setSource(purchase?.source ?? "cardmarket");
-    setTotalAmount(purchase ? String(purchase.total_amount) : "");
-    setShippingCost(purchase ? String(purchase.shipping_cost ?? 0) : "0");
-    setNotes(purchase?.notes ?? "");
+    setSource(purchase?.source ?? prefill?.source ?? "cardmarket");
+    setTotalAmount(purchase ? String(purchase.total_amount) : prefill?.totalAmount ?? "");
+    setShippingCost(purchase ? String(purchase.shipping_cost ?? 0) : prefill?.shippingCost ?? "0");
+    setNotes(purchase?.notes ?? prefill?.notes ?? "");
     setError(null);
   }
 
@@ -132,6 +145,7 @@ export function PurchaseDialog({
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
+        onOpenChangeExternal?.(nextOpen);
         if (!nextOpen) resetForm();
       }}
     >

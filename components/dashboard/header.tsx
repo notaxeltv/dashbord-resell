@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { href: "/dashboard/purchases", label: "Lotti", match: "prefix" },
   { href: "/dashboard/sales", label: "Vendite", match: "prefix" },
   { href: "/dashboard/numbers", label: "Numeri", match: "prefix" },
+  { href: "/dashboard/documents", label: "Fatture", match: "prefix" },
   { href: "/dashboard/import", label: "Import JP", match: "prefix" },
   { href: "/dashboard/registro", label: "Registro", match: "prefix" },
 ] as const;
@@ -35,7 +36,7 @@ export function DashboardHeader({ email }: { email: string }) {
   }
 
   return (
-    <header className="relative border-b border-fuchsia-900/40 bg-gradient-to-r from-[#170821] via-[#2b0f3f] to-[#100815] text-white shadow-lg">
+    <header className="relative border-b border-fuchsia-900/40 bg-gradient-to-r from-[#170821] via-[#2b0f3f] to-[#100815] text-white shadow-lg print:hidden">
       <div className="absolute inset-x-0 bottom-0 h-[3px] bg-gradient-to-r from-amber-400 via-fuchsia-500 to-amber-400" />
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link

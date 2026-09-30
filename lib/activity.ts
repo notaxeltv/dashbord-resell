@@ -13,6 +13,8 @@ export const ACTIVITY_ENTITY_LABELS: Record<string, string> = {
   sale: "Vendita",
   transaction: "Extra",
   session: "Sessione",
+  invoice: "Fattura",
+  purchase_receipt: "Ricevuta",
 };
 
 export function actorLabel(profile: Profile | undefined | null): string {

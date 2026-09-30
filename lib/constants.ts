@@ -59,6 +59,23 @@ export const CARD_STATUSES_EDITABLE = CARD_STATUSES.filter(
   (status) => status.value === "in_stock" || status.value === "listed",
 );
 
+export const PAYMENT_METHODS = [
+  { value: "bonifico", label: "Bonifico bancario" },
+  { value: "contanti", label: "Contanti" },
+  { value: "carta", label: "Carta/POS" },
+  { value: "paypal", label: "PayPal" },
+  { value: "altro", label: "Altro" },
+] as const;
+
+export const TAX_REGIMES = [
+  { value: "forfettario", label: "Regime forfettario" },
+  { value: "ordinario", label: "Regime ordinario" },
+] as const;
+
+/** Dicitura standard da riportare sulle fatture in regime forfettario (nessuna IVA in rivalsa). */
+export const FORFETTARIO_LEGAL_NOTE =
+  "Operazione effettuata ai sensi dell'art. 1, commi 54-89, L. 190/2014 (regime forfettario): operazione non soggetta a IVA né a ritenuta d'acconto.";
+
 export function optionLabel(
   options: readonly { readonly value: string; readonly label: string }[],
   value: string | null | undefined,
