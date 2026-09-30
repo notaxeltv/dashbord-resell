@@ -27,7 +27,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader email={user.email ?? ""} />
-      <main className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 sm:pb-8 lg:px-8">
+      <main className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 sm:pb-8 lg:px-8 print:max-w-none print:p-0">
         {children}
       </main>
       <BottomNav />

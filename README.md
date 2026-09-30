@@ -273,6 +273,33 @@ per la configurazione.
   Lotti con un nuovo acquisto precompilato (totale e spedizione) a partire
   dal calcolo appena fatto.
 
+### Fatture e ricevute (`/dashboard/documents`)
+
+- Sezione **Fatture** per generare documenti stampabili da consegnare a
+  clienti con **partita IVA**: numerazione progressiva automatica
+  (riparte da 1 ogni anno), calcolo di imponibile/IVA/totale, dicitura
+  fiscale precompilata per il regime forfettario, collegamento opzionale a
+  una vendita già registrata (precompila cliente e importo).
+- Sezione **Ricevute** per documentare acquisti da **privati** (venditori
+  senza partita IVA): autodichiarazione con dati del venditore, importo,
+  metodo di pagamento, collegamento opzionale a un lotto già registrato.
+- **Dati del venditore**: un form unico (ragione sociale/nome, regime
+  fiscale, P.IVA, codice fiscale, indirizzo, IBAN) usato come intestazione
+  su tutti i documenti generati.
+- Ogni fattura/ricevuta ha un pulsante **Stampa / Salva PDF** che apre una
+  versione pulita e stampabile in una nuova scheda (usa "Stampa" del
+  browser → "Salva come PDF" per ottenere un file).
+- Ricerca, ordinamento colonne ed **esporta CSV** per entrambe le sezioni,
+  come per Lotti/Vendite/Inventario.
+- **Importante**: questi documenti sono generati e stampati dall'app, ma
+  **non vengono trasmessi al Sistema di Interscambio (SdI)**. Non
+  sostituiscono una fattura elettronica: se la tua attività è soggetta
+  all'obbligo di fatturazione elettronica devi comunque usare un software
+  abilitato (o il tuo commercialista) per l'emissione reale. Usa questa
+  sezione come promemoria/archivio interno e verifica sempre con un
+  commercialista la correttezza fiscale prima di consegnare un documento a
+  un cliente.
+
 ### App installabile (PWA) e nav mobile
 
 - L'app ha un `manifest.json` con icone e colore tema: su smartphone si può
@@ -321,6 +348,13 @@ per la configurazione.
 > ```sql
 > alter table public.cards add column if not exists image_url text;
 > ```
+>
+> Se vuoi aggiungere solo le funzionalità più recenti senza rieseguire
+> tutto `schema.sql`, sono disponibili anche script incrementali separati:
+> [`supabase/activity_log.sql`](./supabase/activity_log.sql) +
+> [`supabase/activity_delete.sql`](./supabase/activity_delete.sql) per il
+> Registro, e [`supabase/documents.sql`](./supabase/documents.sql) per
+> Fatture e ricevute.
 
 ## Setup locale
 
