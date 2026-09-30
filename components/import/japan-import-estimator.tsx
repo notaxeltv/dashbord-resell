@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Landmark, Package, Percent, TrendingUp } from "lucide-react";
 
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -107,6 +108,7 @@ function MoneyField({
 }
 
 export function JapanImportEstimator() {
+  const router = useRouter();
   const [currency, setCurrency] = useState<MoneyCurrency>("JPY");
   const [goodsAmount, setGoodsAmount] = useState("");
   const [shippingAmount, setShippingAmount] = useState("");
@@ -219,6 +221,16 @@ export function JapanImportEstimator() {
     if (!next) return;
     setCategory(next.id);
     if (next.dutyPct != null) setDutyRate(String(next.dutyPct));
+  }
+
+  function applyEstimateToNewLot() {
+    const params = new URLSearchParams({
+      prefillTotal: Math.max(0, result.total - result.shippingEur).toFixed(2),
+      prefillShipping: result.shippingEur.toFixed(2),
+      prefillSource: "altro",
+      prefillNotes: `Import Giappone: merce ${formatEur(result.goodsEur)} · dazio+IVA+svincolo ${formatEur(result.importCharges)}${result.proxyEur > 0 ? ` · proxy ${formatEur(result.proxyEur)}` : ""}`,
+    });
+    router.push(`/dashboard/purchases?${params.toString()}`);
   }
 
   const rows = [
@@ -542,6 +554,19 @@ export function JapanImportEstimator() {
                 Stima operativa, non un parere doganale. IVA = (valore in dogana +
                 dazio + svincolo) × aliquota. Il corriere può aggiungere IVA sul
                 proprio diritto di svincolo.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 w-full"
+                disabled={result.total <= 0}
+                onClick={applyEstimateToNewLot}
+              >
+                Usa questa stima per un nuovo lotto →
+              </Button>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Apre &quot;Nuovo lotto&quot; in Lotti con totale e spedizione
+                già precompilati.
               </p>
             </CardContent>
           </Card>
