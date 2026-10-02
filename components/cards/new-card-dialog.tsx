@@ -82,6 +82,10 @@ export function NewCardDialog({
     setNumber(card.number);
     setRarity(card.rarity ?? "");
     setImageUrl(card.imageUrl);
+    if (card.language === "JAP") {
+      setLanguage("JAP");
+      setIsJapanese(true);
+    }
   }
 
   function resetForm() {

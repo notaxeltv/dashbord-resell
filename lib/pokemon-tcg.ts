@@ -1,4 +1,5 @@
 import { parseCardCode, type CardLookupHit } from "./card-code";
+import { lookupJapaneseCard } from "./tcgdex-ja";
 import { italianExpansionName } from "./tcgdex-sets";
 
 export type { CardLookupHit };
@@ -318,9 +319,12 @@ export async function lookupCardFromCode(
     return {
       ok: false,
       status: 400,
-      error: "Codice non riconosciuto. Esempi: PAL 193, sv2-193, TRR-15.",
+      error: "Codice non riconosciuto. Esempi: PAL 193, sv2-193, SV2a-001.",
     };
   }
+
+  const japanese = await lookupJapaneseCard(parsed, fetcher);
+  if (japanese) return japanese;
 
   const setToken = parsed.setToken;
   const variants = numberVariants(parsed.number);
@@ -405,6 +409,13 @@ export async function lookupCardFromCode(
       const hit = await fromCards([direct], number, null);
       if (hit) return { ok: true, card: hit };
     }
+  }
+
+  if (!sawDown) {
+    const fallback = await lookupJapaneseCard(parsed, fetcher, {
+      includeShared: true,
+    });
+    if (fallback) return fallback;
   }
 
   if (sawMiss) return failureFor("not_found");
