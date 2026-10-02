@@ -1,4 +1,9 @@
 import type { CardLookupHit, ParsedCardCode } from "./card-code";
+import {
+  englishJapaneseCardName,
+  englishJapaneseSetName,
+  readDexId,
+} from "./ja-en-names";
 
 const TCGDEX_BASE = "https://api.tcgdex.net/v2";
 const IMAGE_HOST = "assets.tcgdex.net";
@@ -186,8 +191,19 @@ export async function lookupJapaneseCard(
       sawDown = true;
       continue;
     }
-    const mapped = mapJapaneseCard(await response.json(), japanese.name, japanese.id);
-    if (mapped) return { ok: true, card: mapped };
+    const body = await response.json();
+    const mapped = mapJapaneseCard(body, japanese.name, japanese.id);
+    if (mapped) {
+      const setName = await englishJapaneseSetName(mapped.setName, fetcher);
+      if (setName) mapped.setName = setName;
+      const cardName = await englishJapaneseCardName(
+        readDexId(body),
+        mapped.name,
+        fetcher,
+      );
+      if (cardName) mapped.name = cardName;
+      return { ok: true, card: mapped };
+    }
   }
 
   if (sawDown) {
