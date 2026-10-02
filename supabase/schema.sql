@@ -700,7 +700,7 @@ begin
   end if;
 
   if ch.target_ids is null then
-    delete from public.activity_log;
+    delete from public.activity_log where true;
   else
     delete from public.activity_log where id = any (ch.target_ids);
   end if;
