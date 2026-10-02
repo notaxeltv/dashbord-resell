@@ -41,6 +41,7 @@ export function CardCodeField({
         number?: unknown;
         rarity?: unknown;
         imageUrl?: unknown;
+        language?: unknown;
       } | null;
 
       if (!response.ok || !data || typeof data.name !== "string") {
@@ -63,6 +64,7 @@ export function CardCodeField({
           typeof data.imageUrl === "string" && data.imageUrl.trim()
             ? data.imageUrl
             : null,
+        language: data.language === "JAP" ? "JAP" : undefined,
       });
     } catch {
       setError("Ricerca non riuscita.");
@@ -79,7 +81,7 @@ export function CardCodeField({
           id={id}
           value={code}
           onChange={(event) => setCode(event.target.value)}
-          placeholder="es. PAL 193, sv2-193, TRR-15"
+          placeholder="es. PAL 193, sv2-193, SV2a-001"
           autoComplete="off"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -100,7 +102,9 @@ export function CardCodeField({
       <p className="text-xs text-muted-foreground">
         Compila nome, espansione, codice set, numero, rarità e immagine. I
         campi restano modificabili prima del salvataggio. L&apos;espansione è
-        in italiano quando TCGdex la conosce, altrimenti resta in inglese.
+        in italiano quando TCGdex la conosce, altrimenti resta in inglese. Un
+        codice giapponese, per esempio SV2a-001, compila nome e espansione
+        giapponesi e imposta la lingua su Giapponese.
         Condizione, costo, foil e reverse non vengono presi dal codice.
       </p>
       {error && (

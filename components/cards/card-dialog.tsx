@@ -81,6 +81,8 @@ export function CardDialog({
       number: hit.number,
       rarity: hit.rarity,
       image_url: hit.imageUrl,
+      language: hit.language === "JAP" ? "JAP" : prev.language,
+      is_japanese: hit.language === "JAP" ? true : prev.is_japanese,
     }));
     setImageUrl(hit.imageUrl);
     setImageHint(null);
