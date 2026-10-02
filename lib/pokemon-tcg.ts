@@ -1,4 +1,5 @@
 import { parseCardCode, type CardLookupHit } from "./card-code";
+import { italianExpansionName } from "./tcgdex-sets";
 
 export type { CardLookupHit };
 
@@ -358,7 +359,17 @@ export async function lookupCardFromCode(
       sawMiss = true;
       return null;
     }
-    return withSetCode(mapped, info);
+    const named = withSetCode(mapped, info);
+    const italian = await italianExpansionName(
+      {
+        setId: info?.id || picked.set?.id || "",
+        englishName: named.setName,
+        setCode: named.setCode,
+      },
+      fetcher,
+    );
+    if (italian) named.setName = italian;
+    return named;
   }
 
   if (setInfo) {

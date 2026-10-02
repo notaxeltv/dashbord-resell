@@ -99,8 +99,9 @@ export function CardCodeField({
       </div>
       <p className="text-xs text-muted-foreground">
         Compila nome, espansione, codice set, numero, rarità e immagine. I
-        campi restano modificabili prima del salvataggio. Condizione, costo,
-        foil e reverse non vengono presi dal codice.
+        campi restano modificabili prima del salvataggio. L&apos;espansione è
+        in italiano quando TCGdex la conosce, altrimenti resta in inglese.
+        Condizione, costo, foil e reverse non vengono presi dal codice.
       </p>
       {error && (
         <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
