@@ -4,6 +4,7 @@ import {
   englishJapanesePrintedName,
   englishJapaneseSetName,
   readDexId,
+  readPrintedCount,
 } from "./ja-en-names";
 
 const TCGDEX_BASE = "https://api.tcgdex.net/v2";
@@ -147,9 +148,10 @@ function mapJapaneseCard(body: unknown, setName: string, setId: string): CardLoo
 }
 
 /**
- * Se il codice è un set solo giapponese, legge carta e espansione da TCGdex ja.
- * Null se il set è occidentale o condiviso con il catalogo inglese: in quel caso
- * resta la ricerca su pokemontcg.io. Non imposta foil né reverse.
+ * Se il codice è un set del catalogo giapponese e la carta esiste lì, legge
+ * carta ed espansione da TCGdex ja. Se l'id è condiviso con un set occidentale
+ * ma la carta giapponese non c'è, restituisce null e resta pokemontcg.io.
+ * Non imposta foil né reverse.
  */
 export async function lookupJapaneseCard(
   parsed: ParsedCardCode,
@@ -165,9 +167,7 @@ export async function lookupJapaneseCard(
 
   const japanese = lists.ja.find((set) => sameId(set.id, parsed.setToken));
   if (!japanese) return null;
-  if (!options?.includeShared && !lists.enKnown) return null;
   const alsoWestern = lists.en.some((set) => sameId(set.id, japanese.id));
-  if (alsoWestern && !options?.includeShared) return null;
 
   let sawDown = false;
   for (const number of numberVariants(parsed.number)) {
@@ -195,7 +195,11 @@ export async function lookupJapaneseCard(
     const body = await response.json();
     const mapped = mapJapaneseCard(body, japanese.name, japanese.id);
     if (mapped) {
-      const setName = await englishJapaneseSetName(mapped.setName, fetcher);
+      const setName = await englishJapaneseSetName(
+        mapped.setName,
+        fetcher,
+        readPrintedCount(body),
+      );
       if (setName) mapped.setName = setName;
       const cardName = await englishJapaneseCardName(
         readDexId(body),
@@ -211,6 +215,15 @@ export async function lookupJapaneseCard(
           fetcher,
         );
         if (printedName) mapped.name = printedName;
+        else {
+          const looseName = await englishJapaneseCardName(
+            readDexId(body),
+            mapped.name,
+            fetcher,
+            { loose: true },
+          );
+          if (looseName) mapped.name = looseName;
+        }
       }
       return { ok: true, card: mapped };
     }
@@ -223,6 +236,7 @@ export async function lookupJapaneseCard(
       error: "Servizio Pokémon TCG non disponibile. Riprova tra poco.",
     };
   }
+  if (!options?.includeShared && (alsoWestern || !lists.enKnown)) return null;
   return {
     ok: false,
     status: 404,

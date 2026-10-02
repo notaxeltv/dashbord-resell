@@ -103,9 +103,9 @@ export function CardCodeField({
         Compila nome, espansione, codice set, numero, rarità e immagine. I
         campi restano modificabili prima del salvataggio. L&apos;espansione è
         in italiano quando TCGdex la conosce, altrimenti resta in inglese. Un
-        codice giapponese, per esempio SV3-066, compila nome carta e
-        espansione in inglese (Ruler of the Black Flame, non il nome del set
-        occidentale) e imposta la lingua su Giapponese.
+        codice giapponese di qualsiasi era, per esempio SV3-066 o PMCG4-001,
+        compila nome carta e espansione in inglese (Ruler of the Black Flame,
+        non il nome del set occidentale) e imposta la lingua su Giapponese.
         Condizione, costo, foil e reverse non vengono presi dal codice.
       </p>
       {error && (
