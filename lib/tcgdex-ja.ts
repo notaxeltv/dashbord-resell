@@ -1,6 +1,7 @@
 import type { CardLookupHit, ParsedCardCode } from "./card-code";
 import {
   englishJapaneseCardName,
+  englishJapanesePrintedName,
   englishJapaneseSetName,
   readDexId,
 } from "./ja-en-names";
@@ -201,7 +202,16 @@ export async function lookupJapaneseCard(
         mapped.name,
         fetcher,
       );
-      if (cardName) mapped.name = cardName;
+      if (cardName) {
+        mapped.name = cardName;
+      } else if (setName) {
+        const printedName = await englishJapanesePrintedName(
+          setName,
+          mapped.number,
+          fetcher,
+        );
+        if (printedName) mapped.name = printedName;
+      }
       return { ok: true, card: mapped };
     }
   }

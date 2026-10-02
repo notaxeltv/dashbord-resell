@@ -113,6 +113,107 @@ export async function englishJapaneseSetName(
   return english?.trim() || null;
 }
 
+const cardNamesCache = new Map<string, { fetchedAt: number; names: Map<string, string> }>();
+
+function rememberCardNumber(names: Map<string, string>, number: string, english: string) {
+  const trimmed = number.trim();
+  const name = english.trim();
+  if (!trimmed || !name) return;
+  names.set(trimmed, name);
+  const stripped = trimmed.replace(/^0+(?=\d)/, "");
+  if (stripped) names.set(stripped, name);
+}
+
+/**
+ * Dall'elenco Bulbapedia del set giapponese ricava il nome inglese della carta
+ * (ポピー → Poppy, タウンデパート → Town Store), compreso allenatore e strumento.
+ */
+export function parseJapaneseSetCardNames(
+  wikitext: string,
+  englishSetName: string,
+): Map<string, string> {
+  const names = new Map<string, string>();
+  const linkPattern =
+    /\{\{Setlist\/(?:nm)?entry\|(\d+)\/\d+\|[^\n]*\[\[(.+?) \((.+?) (\d+)\)\|/g;
+  for (const match of wikitext.matchAll(linkPattern)) {
+    if (match[3] !== englishSetName) continue;
+    rememberCardNumber(names, match[1], match[2]);
+    rememberCardNumber(names, match[4], match[2]);
+  }
+  const idPattern = /\{\{TCG ID\|([^|]+)\|([^|}]+)\|([^|}]+)\}\}/g;
+  for (const match of wikitext.matchAll(idPattern)) {
+    if (match[1] !== englishSetName) continue;
+    rememberCardNumber(names, match[3], match[2]);
+  }
+  return names;
+}
+
+async function bulbapediaWikitext(
+  page: string,
+  fetcher: FetchLike,
+): Promise<string | null> {
+  const url = new URL("https://bulbapedia.bulbagarden.net/w/api.php");
+  url.searchParams.set("action", "parse");
+  url.searchParams.set("page", page);
+  url.searchParams.set("prop", "wikitext");
+  url.searchParams.set("redirects", "1");
+  url.searchParams.set("format", "json");
+  const response = await fetcher(url.toString(), {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "pokemon-app/card-lookup",
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!response.ok) return null;
+  const body = (await response.json()) as {
+    parse?: { wikitext?: Record<string, string> };
+  };
+  return body.parse?.wikitext?.["*"] ?? null;
+}
+
+async function loadCardNames(
+  englishSetName: string,
+  fetcher: FetchLike,
+): Promise<Map<string, string> | null> {
+  const now = Date.now();
+  const cached = cardNamesCache.get(englishSetName);
+  if (fetcher === fetch && cached && now - cached.fetchedAt < SETS_TTL_MS) {
+    return cached.names;
+  }
+
+  try {
+    let wikitext = await bulbapediaWikitext(`${englishSetName} (TCG)`, fetcher);
+    const redirect = wikitext?.match(/^#REDIRECT\s+\[\[([^\]|#]+)/i)?.[1]?.trim();
+    if (redirect) wikitext = await bulbapediaWikitext(redirect, fetcher);
+    if (!wikitext) return cached?.names ?? null;
+    const names = parseJapaneseSetCardNames(wikitext, englishSetName);
+    if (names.size === 0) return cached?.names ?? null;
+    if (fetcher === fetch) cardNamesCache.set(englishSetName, { fetchedAt: now, names });
+    return names;
+  } catch {
+    return cached?.names ?? null;
+  }
+}
+
+export async function englishJapanesePrintedName(
+  englishSetName: string,
+  number: string,
+  fetcher: FetchLike = fetch,
+): Promise<string | null> {
+  const names = await loadCardNames(englishSetName.trim(), fetcher);
+  if (!names) return null;
+  const trimmed = number.trim();
+  const stripped = trimmed.replace(/^0+(?=\d)/, "");
+  return (
+    names.get(trimmed) ??
+    (stripped ? names.get(stripped) : undefined) ??
+    (/^\d+$/.test(stripped) ? names.get(stripped.padStart(3, "0")) : undefined) ??
+    null
+  );
+}
+
 function splitLatinSuffix(name: string): { base: string; suffix: string } {
   const match = name.match(/^(.*?)([A-Za-z][A-Za-z0-9]*)$/);
   if (!match?.[1] || !match[2] || !/[^\u0000-\u007f]/.test(match[1])) {
