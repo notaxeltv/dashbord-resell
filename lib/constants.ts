@@ -1,5 +1,11 @@
 export const CARD_CONDITIONS = ["NM", "EX", "GD", "LP", "P"] as const;
 
+/** reverse_style salvato su public.cards. Il vuoto (SELECT_NONE) è «non reverse». */
+export const REVERSE_STYLES = [
+  { value: "reverse", label: "Reverse" },
+  { value: "stamped", label: "Stamped" },
+] as const;
+
 export const CARD_CONDITION_LABELS: Record<string, string> = {
   NM: "Near Mint (NM)",
   EX: "Excellent (EX)",
