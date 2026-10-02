@@ -48,6 +48,8 @@ create table if not exists public.cards (
     check (status in ('in_stock', 'listed', 'sold', 'reserved')),
   notes text,
   image_url text,
+  rarity text,
+  reverse_style text,
   owner_id uuid not null references public.profiles (id) on delete restrict,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -384,6 +386,9 @@ create policy "transactions_delete_authenticated" on public.transactions
 
 alter table public.cards
   add column if not exists image_url text;
+
+alter table public.cards add column if not exists rarity text;
+alter table public.cards add column if not exists reverse_style text;
 
 alter table public.transactions
   add column if not exists date date;

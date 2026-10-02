@@ -27,6 +27,8 @@ export interface Card {
   status: CardStatus;
   notes: string | null;
   image_url: string | null;
+  rarity: string | null;
+  reverse_style: string | null;
   purchase_id: string | null;
   owner_id: string;
   updated_by?: string | null;

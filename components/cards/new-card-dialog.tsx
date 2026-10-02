@@ -32,11 +32,15 @@ import {
   CARD_LANGUAGES,
   CARD_STATUSES_EDITABLE,
   PURCHASE_SOURCES,
+  REVERSE_STYLES,
   SELECT_NONE,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { formatISODate } from "@/lib/dates";
+import { normalizeReverseStyle, type CardLookupHit } from "@/lib/card-code";
 import type { PurchaseOption } from "@/lib/types";
+import { CardCodeField } from "@/components/cards/card-code-field";
+import { CardThumbnail } from "@/components/cards/card-thumbnail";
 
 export function NewCardDialog({
   purchases = [],
@@ -54,11 +58,14 @@ export function NewCardDialog({
   const [name, setName] = useState("");
   const [setName_, setSetName] = useState("");
   const [number, setNumber] = useState("");
+  const [rarity, setRarity] = useState("");
   const [condition, setCondition] = useState("NM");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [setCode, setSetCode] = useState("");
   const [language, setLanguage] = useState("ITA");
   const [isFoil, setIsFoil] = useState(false);
+  const [reverseStyle, setReverseStyle] = useState(SELECT_NONE);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isJapanese, setIsJapanese] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState("");
   const [purchaseSource, setPurchaseSource] = useState(SELECT_NONE);
@@ -68,15 +75,27 @@ export function NewCardDialog({
   const [status, setStatus] = useState("in_stock");
   const [notes, setNotes] = useState("");
 
+  function applyLookup(card: CardLookupHit) {
+    setName(card.name);
+    setSetName(card.setName);
+    setSetCode(card.setCode);
+    setNumber(card.number);
+    setRarity(card.rarity ?? "");
+    setImageUrl(card.imageUrl);
+  }
+
   function resetForm() {
     setName("");
     setSetName("");
     setNumber("");
+    setRarity("");
     setCondition("NM");
     setPurchasePrice("");
     setSetCode("");
     setLanguage("ITA");
     setIsFoil(false);
+    setReverseStyle(SELECT_NONE);
+    setImageUrl(null);
     setIsJapanese(false);
     setPurchaseDate("");
     setPurchaseSource(SELECT_NONE);
@@ -108,10 +127,13 @@ export function NewCardDialog({
         set_name: setName_ || null,
         set_code: setCode || null,
         number: number || null,
+        rarity: rarity.trim() || null,
         language,
         condition,
         is_foil: isFoil,
+        reverse_style: normalizeReverseStyle(reverseStyle),
         is_japanese: language === "JAP" ? true : isJapanese,
+        image_url: imageUrl || null,
         purchase_price: purchasePrice ? Number(purchasePrice) : null,
         purchase_date: purchaseDate || null,
         purchase_source:
@@ -141,7 +163,7 @@ export function NewCardDialog({
       }),
     );
 
-    if (inserted?.id && (setName_ || setCode)) {
+    if (inserted?.id && !imageUrl && (setName_ || setCode)) {
       await fetch(`/api/cards/${inserted.id}/image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -184,6 +206,17 @@ export function NewCardDialog({
             <p className="rounded-md bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">{error}</p>
           )}
 
+          <CardCodeField id="nc_code" onFilled={applyLookup} />
+
+          {imageUrl && (
+            <div className="flex items-center gap-3">
+              <CardThumbnail imageUrl={imageUrl} name={name || "Carta"} className="h-28 w-20" />
+              <p className="text-xs text-muted-foreground">
+                Immagine trovata dal codice. Verrà salvata insieme alla carta.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="nc_name">Nome *</Label>
             <Input
@@ -197,12 +230,21 @@ export function NewCardDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="nc_set">Set</Label>
+              <Label htmlFor="nc_set">Espansione</Label>
               <Input
                 id="nc_set"
                 value={setName_}
                 onChange={(event) => setSetName(event.target.value)}
-                placeholder="es. Base Set"
+                placeholder="es. Paldea Evolved"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nc_set_code">Codice set</Label>
+              <Input
+                id="nc_set_code"
+                value={setCode}
+                onChange={(event) => setSetCode(event.target.value)}
+                placeholder="es. PAL"
               />
             </div>
             <div className="space-y-2">
@@ -211,7 +253,16 @@ export function NewCardDialog({
                 id="nc_number"
                 value={number}
                 onChange={(event) => setNumber(event.target.value)}
-                placeholder="es. 4/102"
+                placeholder="es. 193"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nc_rarity">Rarità</Label>
+              <Input
+                id="nc_rarity"
+                value={rarity}
+                onChange={(event) => setRarity(event.target.value)}
+                placeholder="es. Illustration Rare"
               />
             </div>
           </div>
@@ -245,24 +296,43 @@ export function NewCardDialog({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 pt-2">
+              <Checkbox
+                id="nc_foil"
+                checked={isFoil}
+                onCheckedChange={(value) => setIsFoil(value === true)}
+              />
+              <Label htmlFor="nc_foil">Foil</Label>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nc_reverse">Reverse</Label>
+              <Select value={reverseStyle} onValueChange={setReverseStyle}>
+                <SelectTrigger id="nc_reverse">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_NONE}>Non reverse</SelectItem>
+                  {REVERSE_STYLES.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <button
             type="button"
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
             onClick={() => setShowMore((value) => !value)}
           >
-            {showMore ? "Nascondi altri campi" : "Altri campi (foil, lotto, target…)"}
+            {showMore ? "Nascondi altri campi" : "Altri campi (lingua, lotto, target…)"}
           </button>
 
           {showMore && (
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Codice set</Label>
-                <Input
-                  value={setCode}
-                  onChange={(event) => setSetCode(event.target.value)}
-                  placeholder="es. BS"
-                />
-              </div>
               <div className="space-y-2">
                 <Label>Lingua</Label>
                 <Select
@@ -283,14 +353,6 @@ export function NewCardDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="flex items-center gap-2 pt-6">
-                <Checkbox
-                  id="nc_foil"
-                  checked={isFoil}
-                  onCheckedChange={(value) => setIsFoil(value === true)}
-                />
-                <Label htmlFor="nc_foil">Foil</Label>
               </div>
               <div className="flex items-center gap-2 pt-6">
                 <Checkbox

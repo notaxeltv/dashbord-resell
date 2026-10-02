@@ -34,11 +34,14 @@ import {
   CARD_STATUSES,
   CARD_STATUSES_EDITABLE,
   PURCHASE_SOURCES,
+  REVERSE_STYLES,
   SELECT_NONE,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { formatISODate } from "@/lib/dates";
+import { normalizeReverseStyle, type CardLookupHit } from "@/lib/card-code";
 import type { Card as CardRow, PurchaseOption } from "@/lib/types";
+import { CardCodeField } from "@/components/cards/card-code-field";
 import { CardThumbnail } from "@/components/cards/card-thumbnail";
 
 export function CardDialog({
@@ -69,6 +72,20 @@ export function CardDialog({
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function applyLookup(hit: CardLookupHit) {
+    setForm((prev) => ({
+      ...prev,
+      name: hit.name,
+      set_name: hit.setName,
+      set_code: hit.setCode || null,
+      number: hit.number,
+      rarity: hit.rarity,
+      image_url: hit.imageUrl,
+    }));
+    setImageUrl(hit.imageUrl);
+    setImageHint(null);
+  }
+
   function resetForm() {
     setForm(card);
     setImageUrl(card.image_url);
@@ -95,6 +112,7 @@ export function CardDialog({
       const data = await response.json();
       if (data?.imageUrl) {
         setImageUrl(data.imageUrl);
+        update("image_url", data.imageUrl);
         router.refresh();
       } else if (data?.message) {
         setImageHint(data.message);
@@ -129,10 +147,13 @@ export function CardDialog({
         set_name: form.set_name || null,
         set_code: form.set_code || null,
         number: form.number || null,
+        rarity: form.rarity?.trim() || null,
         language: form.language,
         condition: form.condition,
         is_foil: !!form.is_foil,
+        reverse_style: normalizeReverseStyle(form.reverse_style),
         is_japanese: form.language === "JAP" ? true : !!form.is_japanese,
+        image_url: form.image_url || null,
         purchase_price: form.purchase_price ?? null,
         purchase_date: form.purchase_date || null,
         purchase_source:
@@ -260,6 +281,8 @@ export function CardDialog({
             </div>
           </div>
 
+          <CardCodeField id="cd_code" onFilled={applyLookup} />
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="cd_name">Nome carta *</Label>
@@ -272,7 +295,7 @@ export function CardDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="cd_set_name">Set</Label>
+              <Label htmlFor="cd_set_name">Espansione</Label>
               <Input
                 id="cd_set_name"
                 value={form.set_name ?? ""}
@@ -295,6 +318,15 @@ export function CardDialog({
                 id="cd_number"
                 value={form.number ?? ""}
                 onChange={(event) => update("number", event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cd_rarity">Rarità</Label>
+              <Input
+                id="cd_rarity"
+                value={form.rarity ?? ""}
+                onChange={(event) => update("rarity", event.target.value || null)}
               />
             </div>
 
@@ -346,6 +378,28 @@ export function CardDialog({
                 onCheckedChange={(value) => update("is_foil", value === true)}
               />
               <Label htmlFor="cd_is_foil">Foil</Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cd_reverse">Reverse</Label>
+              <Select
+                value={normalizeReverseStyle(form.reverse_style) ?? SELECT_NONE}
+                onValueChange={(value) =>
+                  update("reverse_style", value === SELECT_NONE ? null : value)
+                }
+              >
+                <SelectTrigger id="cd_reverse">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SELECT_NONE}>Non reverse</SelectItem>
+                  {REVERSE_STYLES.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex items-center gap-2 pt-6">
