@@ -699,8 +699,9 @@ begin
     raise exception 'Chiavi non corrette';
   end if;
 
+  -- pg_safeupdate rifiuta DELETE senza WHERE e non si può disattivare.
   if ch.target_ids is null then
-    delete from public.activity_log;
+    delete from public.activity_log where id is not null;
   else
     delete from public.activity_log where id = any (ch.target_ids);
   end if;
