@@ -416,24 +416,25 @@ vengono mai esposti al browser. Puoi attivare uno o entrambi i canali.
    restituirà un **token** nel formato `123456789:AAExxxxxxxxxxxxxxxxxxxxx`
    → sarà il valore di `TELEGRAM_BOT_TOKEN`.
 3. Cerca il tuo nuovo bot su Telegram e invia un qualsiasi messaggio (es.
-   "ciao") per avviare la conversazione. Se vuoi ricevere le notifiche su un
-   **gruppo**, crea il gruppo, aggiungi il bot come membro e invia un
-   messaggio nel gruppo.
-4. Recupera il tuo `chat_id` visitando nel browser:
+   "ciao") per avviare la conversazione. Il socio deve fare lo stesso dal
+   suo telefono: il bot non può scrivere a chi non gli ha mai scritto.
+   In alternativa crea un **gruppo**, aggiungi il bot e invia un messaggio
+   nel gruppo: un solo id raggiunge tutti i membri.
+4. Recupera i `chat_id` visitando nel browser:
 
    ```
    https://api.telegram.org/bot<TOKEN>/getUpdates
    ```
 
-   Nel JSON di risposta cerca il campo `"chat":{"id": ...}` (per una chat
-   privata) o l'id negativo del gruppo (per un gruppo). Quel numero è il
-   valore di `TELEGRAM_CHAT_ID`.
+   Nel JSON di risposta cerca il campo `"chat":{"id": ...}` di ogni chat
+   privata, oppure l'id negativo del gruppo. Più persone: metti gli id
+   separati da virgola in `TELEGRAM_CHAT_ID`.
 5. Imposta le due variabili in `.env.local` (locale) e tra le Environment
-   Variables di Vercel (produzione):
+   Variables di Vercel (produzione), poi rideploya:
 
    ```bash
    TELEGRAM_BOT_TOKEN="123456789:AAExxxxxxxxxxxxxxxxxxxxx"
-   TELEGRAM_CHAT_ID="123456789"
+   TELEGRAM_CHAT_ID="123456789,987654321"
    ```
 
 ### WhatsApp (via Twilio)

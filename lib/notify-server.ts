@@ -10,29 +10,44 @@ export type NotifyResult =
   | { channel: "telegram" | "whatsapp"; sent: true }
   | { error: string };
 
+function telegramChatIds(): string[] {
+  return (process.env.TELEGRAM_CHAT_ID ?? "")
+    .split(/[,;\s]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 export async function sendTelegram(message: string): Promise<NotifyResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const chatIds = telegramChatIds();
 
-  if (!token || !chatId) {
+  if (!token || chatIds.length === 0) {
     return { channel: "telegram", skipped: true };
   }
 
-  const response = await fetch(
-    `https://api.telegram.org/bot${token}/sendMessage`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-      }),
-    },
-  );
+  const failures: string[] = [];
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Telegram: ${body}`);
+  for (const chatId of chatIds) {
+    const response = await fetch(
+      `https://api.telegram.org/bot${token}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const body = await response.text();
+      failures.push(body.slice(0, 180));
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`Telegram: ${failures.join(" | ")}`);
   }
 
   return { channel: "telegram", sent: true };
